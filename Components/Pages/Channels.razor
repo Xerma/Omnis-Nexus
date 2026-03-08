@@ -1,0 +1,31 @@
+﻿@page "/channels/{CommunityId:guid}/{ChannelId:guid}"
+@inject ApplicationDbContext Db
+
+@if (channel == null)
+{
+    <p>Channel not found</p>
+}
+else
+{
+    <h1>@channel.Name</h1>
+    <p>Messages go here</p>
+}
+
+@code {
+
+    [Parameter]
+    public Guid CommunityId { get; set; }
+
+    [Parameter]
+    public Guid ChannelId { get; set; }
+
+    private Channel? channel;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        channel = await Db.Channels.FirstOrDefaultAsync(c => 
+            c.Id == ChannelId && 
+            c.CommunityId == CommunityId);
+    }
+
+}

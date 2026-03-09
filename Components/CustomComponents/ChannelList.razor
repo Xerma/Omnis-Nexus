@@ -1,0 +1,61 @@
+﻿@inject IDbContextFactory<ApplicationDbContext> DbFactory
+@inject NavigationManager Nav
+
+@if (channels is not null)
+{
+    @foreach (var channel in channels)
+    {
+        <div class="channel-list-item">
+            <a href="@($"/channels/{CommunityId}/{channel.Id}")">
+                @channel.Name
+            </a>
+        </div>
+    }
+}
+
+<div class="channel-list-item">
+    <button @onclick="CreateChannel">Create New Channel</button>
+</div>
+
+@code {
+
+    [Parameter]
+    public Guid CommunityId { get; set; }
+
+    private List<Channel>? channels;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        using var db = await DbFactory.CreateDbContextAsync();
+
+        channels = await db.Channels
+            .Where(c => c.CommunityId == CommunityId)
+            .ToListAsync();
+    }
+
+    private async Task CreateChannel()
+    {
+        using var db = await DbFactory.CreateDbContextAsync();
+
+        Community? community = await db.Communities.FirstOrDefaultAsync(c => c.Id == CommunityId);
+
+        if (community == null) return;
+
+        Channel channel = new()
+            {
+                Name = "Channel " + DateTime.UtcNow,
+                CommunityId = CommunityId,
+                Community = community
+            };
+
+        db.Channels.Add(channel);
+        await db.SaveChangesAsync();
+
+        Nav.NavigateTo($"/channels/{community.Id}/{channel.Id}");
+
+        channels = await db.Channels
+            .Where(c => c.CommunityId == CommunityId)
+            .ToListAsync();
+    }
+
+}

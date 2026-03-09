@@ -1,0 +1,84 @@
+﻿@inject IDbContextFactory<ApplicationDbContext> DbFactory
+@inject AuthenticationStateProvider AuthStateProvider
+@inject NavigationManager Nav
+
+@if (communities is not null)
+{
+    @foreach (var community in communities)
+    {
+        <div class="community-list-item">
+            <a href="@($"/channels/{community.Id}")">
+                @community.Name
+            </a>
+        </div>
+    }
+}
+
+<div class="community-list-item">
+    <button @onclick="CreateCommunity">+</button>
+</div>
+
+@code {
+
+    private List<Community>? communities;
+    private string? userId;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        using var db = await DbFactory.CreateDbContextAsync();
+
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+
+        if (user.Identity?.IsAuthenticated == true)
+        {
+            userId = user.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        }
+
+        communities = await db.Communities
+            .Where(c => c.Memberships.Any(m => m.UserId == userId)).ToListAsync();
+            //order by newest joined/created first, custom ordering later on
+    }
+
+    public async Task CreateCommunity()
+    {
+        using var db = await DbFactory.CreateDbContextAsync();
+
+        if (userId == null) return;
+        //TODO: Popup alert + log
+
+        Community community = new()
+        {
+            Name = $"Community {DateTime.Now:HH:mm:ss}",
+            Description = "This is a new community created at " + DateTime.Now.ToString("HH:mm:ss"),
+            OwnerId = userId,
+            CreatedAt = DateTime.UtcNow
+        };
+
+        Membership membership = new()
+        {
+            UserId = userId,
+            Community = community,
+            Role = "Owner",
+            JoinedAt = DateTime.UtcNow
+        };
+
+        db.Communities.Add(community);
+        db.Memberships.Add(membership);
+        await db.SaveChangesAsync();
+        communities = await db.Communities.ToListAsync();
+
+        Channel channel = new()
+        {
+            Name = "General",
+            CommunityId = community.Id,
+            Community = community,
+            CreatedAt = DateTime.UtcNow
+        };
+        db.Channels.Add(channel);
+        await db.SaveChangesAsync();
+
+        Nav.NavigateTo($"/channels/{community.Id}/{channel.Id}");
+    }
+
+}

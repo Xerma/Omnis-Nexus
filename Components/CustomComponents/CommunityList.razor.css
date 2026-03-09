@@ -1,0 +1,10 @@
+﻿
+.community-list-item {
+    height: 60px;
+    width: 60px;
+    background-color: white;
+    text-align: center;
+    font-size: 10px;
+    margin: 10px;
+    align-content: center;
+}

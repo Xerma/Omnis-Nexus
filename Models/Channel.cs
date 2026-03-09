@@ -10,9 +10,10 @@ namespace OmnisNexus.Models
         public Community Community { get; set; }
 
         [MaxLength(50)]
-        public string Name { get; set; }
+        public string Name { get; set; } = "";
+        // handle error if too long
 
-        public DateTime CreatedAt { get; set; }
+        public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
         public ICollection<Message> Messages { get; set; }
     }

@@ -7,7 +7,6 @@ namespace OmnisNexus.Models
     {
         public Guid Id { get; set; } = Guid.NewGuid();
 
-        [MaxLength(30)]
         public string UserId { get; set; }
         public ApplicationUser User { get; set; }
 
@@ -16,6 +15,7 @@ namespace OmnisNexus.Models
 
         [MaxLength(30)]
         public string Role { get; set; }
+        // handle if too long
 
         public DateTime JoinedAt { get; set; }
     }

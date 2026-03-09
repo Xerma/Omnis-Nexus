@@ -1,15 +1,56 @@
-﻿@page "/channels/{CommunityId:guid}/{ChannelId:guid}"
-@inject ApplicationDbContext Db
+﻿@page "/channels/{CommunityId:guid}"
+@page "/channels/{CommunityId:guid}/{ChannelId:guid}"
+@inject IDbContextFactory<ApplicationDbContext> DbFactory
+@inject NavigationManager Nav
+@using OmnisNexus.Components.CustomComponents
+@inject AuthenticationStateProvider AuthStateProvider
 
-@if (channel == null)
-{
-    <p>Channel not found</p>
-}
-else
-{
-    <h1>@channel.Name</h1>
-    <p>Messages go here</p>
-}
+<PageTitle>@channelPageTitle</PageTitle>
+
+<div class="channels-page">
+
+    <div class="channel-list">
+        <ChannelList CommunityId="CommunityId"/>
+    </div>
+
+    <div class="message-list">
+        @if (channel == null)
+        {
+            <p>Channel not found</p>
+        }
+        else
+        {
+            <div class="channel-view">
+                <div class="channel-titlebar">
+                    <h2>@channel.Name</h2>
+
+                </div>
+
+                <div class="channel-content">
+                    @foreach (Message message in Messages)
+                    {
+                        <div>
+                            @message.User
+                            @message.Content
+                            @message.CreatedAt
+                        </div>
+                    }
+                </div>
+
+                <div class="channel-input">
+                    <input type="text" @bind="@messageText" />
+
+                    <button @onclick="SendMessage">Submit</button>
+                </div>
+            </div>
+        }
+    </div>
+
+    <div class="member-list">
+
+    </div>
+
+</div>
 
 @code {
 
@@ -17,15 +58,89 @@ else
     public Guid CommunityId { get; set; }
 
     [Parameter]
-    public Guid ChannelId { get; set; }
+    public Guid? ChannelId { get; set; }
+
+    private string channelPageTitle => channel is not null ? $"{channel.Name}" : "Unknown Channel";
 
     private Channel? channel;
 
+    private List<Message> Messages = new();
+    private string? messageText;
+
+    ClaimsPrincipal? cp;
+    private string? userId;
+
+    ApplicationUser? user;
+
+
+
     protected override async Task OnParametersSetAsync()
     {
-        channel = await Db.Channels.FirstOrDefaultAsync(c => 
+        using var db = await DbFactory.CreateDbContextAsync();
+
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        cp = authState.User;
+
+        if (cp.Identity?.IsAuthenticated == true)
+        {
+            userId = cp.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        }
+
+        user = await db.Users.FirstOrDefaultAsync(u => u.Id == userId);
+
+        if (ChannelId == null)
+        {
+            Channel? firstChannel = await db.Channels
+            .Where(c => c.CommunityId == CommunityId)
+            .OrderBy(c => c.Name)
+            .FirstOrDefaultAsync();
+
+            if (firstChannel != null)
+            {
+                Nav.NavigateTo($"/channels/{CommunityId}/{firstChannel.Id}");
+                return;
+            }
+        }
+
+        channel = await db.Channels.FirstOrDefaultAsync(c => 
             c.Id == ChannelId && 
             c.CommunityId == CommunityId);
+
+        if (ChannelId == null) return;
+
+        Messages = await db.Messages
+        .Include(m => m.User)
+        .Where(m => m.ChannelId == ChannelId.Value)
+        .ToListAsync();
+    }
+
+    private async Task SendMessage()
+    {
+        using var db = await DbFactory.CreateDbContextAsync();
+
+        if (ChannelId == null || channel == null) return;
+        if (string.IsNullOrWhiteSpace(messageText))
+        {
+            messageText = "";
+            return;
+        }
+
+        Message message = new()
+            {
+                ChannelId = ChannelId.Value,
+                UserId = userId!,
+                Content = messageText
+            };
+
+        db.Messages.Add(message);
+        await db.SaveChangesAsync();
+
+        messageText = "";
+
+        Messages = await db.Messages
+        .Include(m => m.User)
+        .Where(m => m.ChannelId == ChannelId.Value)
+        .ToListAsync();
     }
 
 }

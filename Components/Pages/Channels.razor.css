@@ -1,0 +1,30 @@
+﻿
+.channel-list {
+    width: 350px;
+    background-color: black;
+    height: 100vh;
+    overflow: scroll;
+}
+
+.channels-page {
+    display: flex;
+}
+
+.channel-view {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    overflow: scroll;
+}
+
+.channel-titlebar {
+
+}
+
+.channel-content {
+    flex-grow: 1;
+}
+
+.channel-input {
+    position: absolute;
+}

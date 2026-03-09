@@ -1,6 +1,6 @@
 ﻿@page "/"
 
-@inject ApplicationDbContext Db
+@inject IDbContextFactory<ApplicationDbContext> DbFactory
 @inject AuthenticationStateProvider AuthStateProvider
 @inject NavigationManager Nav
 
@@ -9,8 +9,6 @@
 <h1>Hello, world!</h1>
 
 Welcome to your new app.
-
-<button @onclick="CreateCommunity">Create New Community</button>
 
 @if (communities is null)
 {
@@ -36,6 +34,8 @@ else
 
     protected override async Task OnInitializedAsync()
     {
+        using var db = await DbFactory.CreateDbContextAsync();
+
         var authState = await AuthStateProvider.GetAuthenticationStateAsync();
         var user = authState.User;
 
@@ -44,46 +44,7 @@ else
             userId = user.FindFirst(ClaimTypes.NameIdentifier)?.Value;
         }
 
-        communities = await Db.Communities.ToListAsync();
-    }
-
-    private async Task CreateCommunity()
-    {
-        if (userId == null) return;
-        //TODO: Popup alert + log
-
-        Community community = new()
-        {
-            Name = $"Community {DateTime.Now:HH:mm:ss}",
-            Description = "This is a new community created at " + DateTime.Now.ToString("HH:mm:ss"),
-            OwnerId = userId,
-            CreatedAt = DateTime.UtcNow
-        };
-
-        Membership membership = new()
-        {
-            UserId = userId,
-            Community = community,
-            Role = "Owner",
-            JoinedAt = DateTime.UtcNow
-        };
-
-        Db.Communities.Add(community);
-        Db.Memberships.Add(membership);
-        await Db.SaveChangesAsync();
-        communities = await Db.Communities.ToListAsync();
-
-        Channel channel = new()
-        {
-            Name = "General",
-            CommunityId = community.Id,
-            Community = community,
-            CreatedAt = DateTime.UtcNow
-        };
-        Db.Channels.Add(channel);
-        await Db.SaveChangesAsync();
-
-        Nav.NavigateTo($"/channels/{community.Id}/{channel.Id}");
+        communities = await db.Communities.ToListAsync();
     }
 
 }

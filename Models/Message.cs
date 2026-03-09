@@ -11,13 +11,12 @@ namespace OmnisNexus.Models
         public Guid ChannelId { get; set; }
         public Channel Channel { get; set; }
 
-        [MaxLength(30)]
         public string UserId { get; set; }
         public ApplicationUser User { get; set; }
 
         public string Content { get; set; }
 
-        public DateTime CreatedAt { get; set; }
+        public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
         public DateTime? UpdatedAt { get; set; }
     }

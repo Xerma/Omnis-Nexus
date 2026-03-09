@@ -9,9 +9,11 @@ namespace OmnisNexus.Models
 
         [MaxLength(100)]
         public string Name { get; set; }
+        // handle if too long
 
         [MaxLength(256)]
         public string Description { get; set; }
+        // handle if too long
 
         public string OwnerId { get; set; }
         public ApplicationUser Owner { get; set; }

@@ -1,6 +1,25 @@
 ﻿
+.channel-list-container {
+    display: grid;
+    padding-top: 10px;
+    padding-bottom: 10px;
+}
+
 .channel-list-item {
-    text-align: center;
+    font-weight: 400;
+    color: rgb(180, 180, 180);
+    height: 35px;
+    font-size: 15px;
     align-content: center;
-    height: 40px;
+    text-decoration: none;
+    margin: 0 5px 0 5px;
+    border-radius: 6px;
+    padding-left: 10px;
+    cursor: pointer;
+}
+
+.channel-list-item:hover {
+    font-weight: 400;
+    color: white;
+    background-color: rgb(20, 20, 20)
 }

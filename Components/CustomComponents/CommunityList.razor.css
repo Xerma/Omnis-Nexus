@@ -2,9 +2,20 @@
 .community-list-item {
     height: 60px;
     width: 60px;
-    background-color: white;
+    background-color: rgb(37, 37, 37);
     text-align: center;
     font-size: 10px;
     margin: 10px;
     align-content: center;
+    border-radius: 15px;
+    color: white;
+}
+
+.community-list-item p {
+    text-align: center;
+    font-size: 40px;
+}
+
+.community-list-item p:hover {
+    cursor: pointer;
 }

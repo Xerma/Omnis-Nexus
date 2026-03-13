@@ -3,19 +3,21 @@
 
 @if (channels is not null)
 {
+    <div class="channel-list-container">
     @foreach (var channel in channels)
     {
-        <div class="channel-list-item">
-            <a href="@($"/channels/{CommunityId}/{channel.Id}")">
-                @channel.Name
-            </a>
-        </div>
+        <a href="@($"/channels/{CommunityId}/{channel.Id}")" class="channel-list-item">
+            @channel.Name
+        </a>
     }
+
+        <div class="channel-list-item">
+            <span @onclick="CreateChannel">Create New Channel</span>
+        </div>
+
+    </div>
 }
 
-<div class="channel-list-item">
-    <button @onclick="CreateChannel">Create New Channel</button>
-</div>
 
 @code {
 

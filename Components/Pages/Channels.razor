@@ -9,11 +9,13 @@
 
 <div class="channels-page">
 
-    <div class="channel-list">
-        <ChannelList CommunityId="CommunityId"/>
+    <div class="channel-list-outer">
+        <div class="channel-list-inner">
+            <ChannelList CommunityId="CommunityId" />
+        </div>
     </div>
 
-    <div class="message-list">
+    <div class="channel-content">
         @if (channel == null)
         {
             <p>Channel not found</p>
@@ -22,32 +24,41 @@
         {
             <div class="channel-view">
                 <div class="channel-titlebar">
-                    <h2>@channel.Name</h2>
-
+                    <span>@channel.Name</span>
                 </div>
 
-                <div class="channel-content">
-                    @foreach (Message message in Messages)
-                    {
-                        <div>
-                            @message.User
-                            @message.Content
-                            @message.CreatedAt
-                        </div>
-                    }
+                <div class="message-list-outer">
+                    <div class="message-list-inner">
+                        @foreach (Message message in Messages)
+                        {
+                            <div class="message">
+                                <div class="message-author-icon">
+
+                                </div>
+                                <div class="message-header">
+                                    <span class="message-author-name">@message.User</span>
+                                    <span class="message-created-at">@message.CreatedAt</span>
+                                </div>
+                                <div class="message-content">
+                                    @message.Content
+                                </div>
+                                <div class="message-menu" @onclick="OpenMessageMenu">
+
+                                </div>
+                            </div>
+                        }
+                    </div>
                 </div>
 
                 <div class="channel-input">
-                    <input type="text" @bind="@messageText" />
-
-                    <button @onclick="SendMessage">Submit</button>
+                    <textarea type="text" @bind="@messageText" @onkeyup="SendMessage"/>
                 </div>
             </div>
         }
     </div>
 
     <div class="member-list">
-
+        <MemberList CommunityId="CommunityId" ChannelId="ChannelId" />
     </div>
 
 </div>
@@ -141,6 +152,11 @@
         .Include(m => m.User)
         .Where(m => m.ChannelId == ChannelId.Value)
         .ToListAsync();
+    }
+
+    private async Task OpenMessageMenu()
+    {
+        
     }
 
 }

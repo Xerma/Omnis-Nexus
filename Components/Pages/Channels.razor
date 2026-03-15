@@ -5,61 +5,122 @@
 @using OmnisNexus.Components.CustomComponents
 @inject AuthenticationStateProvider AuthStateProvider
 
-<PageTitle>@channelPageTitle</PageTitle>
+<PageTitle>@pageTitle</PageTitle>
 
 <div class="channels-page">
 
     <div class="channel-list-outer">
+        <div class="community-menu">
+            @if (community != null)
+            {
+                @community.Name
+            }
+            else
+            {
+                <div>Community not found!</div>
+            }
+        </div>
+
         <div class="channel-list-inner">
             <ChannelList CommunityId="CommunityId" />
         </div>
     </div>
 
-    <div class="channel-content">
-        @if (channel == null)
-        {
-            <p>Channel not found</p>
-        }
-        else
-        {
-            <div class="channel-view">
-                <div class="channel-titlebar">
-                    <span>@channel.Name</span>
-                </div>
+    <div class="channel-content-outer">
+        <div class="channel-titlebar">
+            @if (channel == null)
+            {
+                <span>Channel not found</span>
+            } else
+            {
+                <span>@channel.Name</span>
+            }
+            <input type="text" 
+                placeholder="Search"/>
+        </div>
 
-                <div class="message-list-outer">
-                    <div class="message-list-inner">
-                        @foreach (Message message in Messages)
-                        {
-                            <div class="message">
-                                <div class="message-author-icon">
+        <div class="channel-content">
+            @if (channel == null)
+            {
+                <p>Channel not found</p>
+            }
+            else
+            {
+                <div class="channel-view">
+                    <div class="message-list-outer">
+                        <div class="message-list-inner">
+                            @foreach (Message message in Messages)
+                            {
+                                <div class="message">
+                                    <div class="message-menu">
+                                        <div class="message-edit"
+                                            @onclick="() => EditMessage(message)">
+                                            Edit
+                                    </div>
+                                        <div class="message-delete"
+                                            @onclick="() => DeleteMessage(message.Id)">Delete</div>
+                                    </div>
 
-                                </div>
-                                <div class="message-header">
-                                    <span class="message-author-name">@message.User</span>
-                                    <span class="message-created-at">@message.CreatedAt</span>
-                                </div>
-                                <div class="message-content">
-                                    @message.Content
-                                </div>
-                                <div class="message-menu" @onclick="OpenMessageMenu">
+                                    <div class="message-author-icon">
+                                    </div>
+                                    <div class="message-header">
+                                        <span class="message-author-name">@message.User</span>
+                                        @if (message.UpdatedAt == null)
+                                        {
+                                            <span class="message-timestamp">@message.CreatedAt</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="message-timestamp">@message.UpdatedAt</span>
+                                        }
+                                    </div>
 
+                                    @if (editingMessageId == message.Id)
+                                    {
+                                        <div class="message-edit-area">
+                                            <textarea
+                                                @ref="editTextArea"
+                                                @bind="editedMessageText"
+                                                @bind:event="oninput"
+                                                @onkeydown="(KeyboardEventArgs e) => HandleEditKey(message.Id, e)"></textarea>
+                                            <div class="edit-actions">
+                                                <span @onclick="CancelEdit">Cancel</span>
+                                                <span class="message-edit-save"
+                                                    @onclick="() => SaveEdit(message.Id)">Save</span>
+                                            </div>
+                                        </div>
+                                    }
+                                    else
+                                    {
+                                        <div class="message-content">
+                                            @message.Content
+                                            @if (message.UpdatedAt != null)
+                                            {
+                                                <span class="message-edited"> (edited)</span>
+                                            }
+                                        </div>
+                                    }
                                 </div>
-                            </div>
-                        }
+                            }
+                        </div>
+                    </div>
+
+                    <div class="channel-input">
+                        <textarea type="text"
+                            @bind="@messageText"
+                            @onkeydown="SendMessage"
+                            @bind:event="oninput"
+                            placeholder="Message @channel.Name"/>
                     </div>
                 </div>
+            }
+        </div>
 
-                <div class="channel-input">
-                    <textarea type="text" @bind="@messageText" @onkeyup="SendMessage"/>
-                </div>
-            </div>
-        }
+        <div class="member-list">
+            <MemberList CommunityId="CommunityId" ChannelId="ChannelId" />
+        </div>
     </div>
-
-    <div class="member-list">
-        <MemberList CommunityId="CommunityId" ChannelId="ChannelId" />
-    </div>
+    
 
 </div>
 
@@ -71,9 +132,10 @@
     [Parameter]
     public Guid? ChannelId { get; set; }
 
-    private string channelPageTitle => channel is not null ? $"{channel.Name}" : "Unknown Channel";
+    private string pageTitle => channel is not null ? $"{community!.Name}" : "Error: Community Not Found";
 
     private Channel? channel;
+    private Community? community;
 
     private List<Message> Messages = new();
     private string? messageText;
@@ -82,6 +144,11 @@
     private string? userId;
 
     ApplicationUser? user;
+
+    private Guid? editingMessageId;
+    private string editedMessageText = "";
+
+    private ElementReference editTextArea;
 
 
 
@@ -113,6 +180,9 @@
             }
         }
 
+        community = await db.Communities.FirstOrDefaultAsync(c =>
+        c.Id == CommunityId);
+
         channel = await db.Channels.FirstOrDefaultAsync(c => 
             c.Id == ChannelId && 
             c.CommunityId == CommunityId);
@@ -122,41 +192,120 @@
         Messages = await db.Messages
         .Include(m => m.User)
         .Where(m => m.ChannelId == ChannelId.Value)
+        .OrderBy(m => m.CreatedAt)
         .ToListAsync();
     }
 
-    private async Task SendMessage()
+    protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        using var db = await DbFactory.CreateDbContextAsync();
-
-        if (ChannelId == null || channel == null) return;
-        if (string.IsNullOrWhiteSpace(messageText))
+        if (editingMessageId != null)
         {
-            messageText = "";
-            return;
+            await editTextArea.FocusAsync();
         }
+    }
 
-        Message message = new()
+    private async Task SendMessage(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter" && !e.ShiftKey)
+        {
+            using var db = await DbFactory.CreateDbContextAsync();
+
+            if (ChannelId == null || channel == null) return;
+            if (string.IsNullOrWhiteSpace(messageText))
+            {
+                messageText = "";
+                return;
+            }
+
+            Message message = new()
             {
                 ChannelId = ChannelId.Value,
                 UserId = userId!,
-                Content = messageText
+                Content = messageText.Trim()
             };
 
-        db.Messages.Add(message);
-        await db.SaveChangesAsync();
+            db.Messages.Add(message);
+            await db.SaveChangesAsync();
 
-        messageText = "";
+            messageText = "";
 
-        Messages = await db.Messages
-        .Include(m => m.User)
-        .Where(m => m.ChannelId == ChannelId.Value)
-        .ToListAsync();
+            Messages = await db.Messages
+            .Include(m => m.User)
+            .Where(m => m.ChannelId == ChannelId.Value)
+            .OrderBy(m => m.CreatedAt)
+            .ToListAsync();
+        }
     }
 
-    private async Task OpenMessageMenu()
+    private void EditMessage(Message m)
     {
-        
+        editingMessageId = m.Id;
+        editedMessageText = m.Content;
+    }
+
+    private void CancelEdit()
+    {
+        editingMessageId = null;
+        editedMessageText = "";
+    }
+
+    private async Task HandleEditKey(Guid id, KeyboardEventArgs e)
+    {
+        using var db = await DbFactory.CreateDbContextAsync();
+        Message? m = await db.Messages.FindAsync(id);
+
+        if (e.Key == "Enter" && !e.ShiftKey)
+        {
+            await SaveEdit(id);
+        }
+
+        if (e.Key == "Escape")
+        {
+            CancelEdit();
+        }
+    }
+
+    private async Task SaveEdit(Guid id)
+    {
+        using var db = await DbFactory.CreateDbContextAsync();
+        Message? m = await db.Messages.FindAsync(id);
+
+        string newText = editedMessageText.Trim();
+        DateTime now = DateTime.UtcNow;
+
+        if (m is null || string.IsNullOrWhiteSpace(newText)) return;
+        if (m.Content == newText)
+        {
+            CancelEdit();
+            return;
+        }
+
+        m.Content = newText;
+        m.UpdatedAt = now;
+        await db.SaveChangesAsync();
+
+        Message? localMessage = Messages.FirstOrDefault(m => m.Id == id);
+        if (localMessage is not null)
+        {
+            localMessage.Content = newText;
+            localMessage.UpdatedAt = now;
+        }
+
+        editingMessageId = null;
+        editedMessageText = "";
+    }
+
+    private async Task DeleteMessage(Guid id)
+    {
+        using var db = await DbFactory.CreateDbContextAsync();
+        Message? m = await db.Messages.FindAsync(id);
+
+        if (m is null) return;
+
+        db.Remove(m);
+        await db.SaveChangesAsync();
+
+        Messages.RemoveAll(m => m.Id == id);
     }
 
 }

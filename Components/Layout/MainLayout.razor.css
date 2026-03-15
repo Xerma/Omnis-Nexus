@@ -12,9 +12,28 @@ main {
     background-image: linear-gradient(180deg, rgb(5, 39, 103) 0%, #3a0647 70%);
 }
 
+.user-profile-tab-container {
+    z-index: 1;
+    display: flex;
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 430px;
+    max-height: 75px;
+    padding: 0 7px 10px 7px;
+    background-color: black;
+}
+
 .community-list {
     background-color: black;
     width: 80px;
+    overflow: scroll;
+    height: 100vh;
+    padding-bottom: 75px;
+}
+
+.community-list::-webkit-scrollbar {
+    display: none;
 }
 
 .top-row {

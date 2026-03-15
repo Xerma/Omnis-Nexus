@@ -37,7 +37,6 @@
 
         communities = await db.Communities
             .Where(c => c.Memberships.Any(m => m.UserId == userId)).ToListAsync();
-            //order by newest joined/created first, custom ordering later on
     }
 
     public async Task CreateCommunity()

@@ -1,0 +1,51 @@
+﻿@inject AuthenticationStateProvider AuthStateProvider
+@inject IDbContextFactory<ApplicationDbContext> DbFactory
+@inject NavigationManager NavigationManager
+
+
+<div class="user-profile-container">
+    <AuthorizeView>
+        <Authorized>
+            <div class="user-profile-row">
+                <NavLink class="user-tab-nav" href="">
+                    <div class="user-tab-container">
+                        <div class="user-icon">
+                        </div>
+                        <div class="username">
+                            @if (user != null)
+                                @user.UserName
+                        </div>
+                        <div class="user-placeholder">
+                        </div>
+                    </div>
+                </NavLink>
+                <NavLink class="settings-nav" href="Account/Manage">
+                    <div class="settings">
+                    </div>
+                </NavLink>
+            </div>
+        </Authorized>
+    </AuthorizeView>
+</div>
+
+
+@code {
+    ClaimsPrincipal? cp;
+    private string? userId;
+    ApplicationUser? user;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        using var db = await DbFactory.CreateDbContextAsync();
+
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        cp = authState.User;
+
+        if (cp.Identity?.IsAuthenticated == true)
+        {
+            userId = cp.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        }
+
+        user = await db.Users.FirstOrDefaultAsync(u => u.Id == userId);
+    }
+}

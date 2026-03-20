@@ -4,36 +4,75 @@
 
 @if (communities is not null)
 {
+    <div class="cl-container">
     @foreach (var community in communities)
     {
-        <div class="community-list-item">
-            <a href="@($"/channels/{community.Id}")">
-                @community.Name
-            </a>
-        </div>
+        <a href="@($"/channels/{community.Id}")"
+               class="community-list-item @(community.Id == ActiveCommunityId ? "active" : "")">
+            @community.Name
+        </a>
     }
+    </div>
 }
 
-<div class="community-list-item">
-    <p @onclick="CreateCommunity">+</p>
+<div class="community-list-item cl-add" @onclick="CreateCommunity">
+    +
 </div>
 
 @code {
 
     private List<Community>? communities;
     private string? userId;
+    private Guid? ActiveCommunityId;
+    ClaimsPrincipal? cp;
+    ApplicationUser? user;
+
+    protected override void OnInitialized()
+    {
+        SetActiveCommunityFromUrl();
+        Nav.LocationChanged += OnLocationChanged;
+    }
+
+    private void OnLocationChanged(object? sender, Microsoft.AspNetCore.Components.Routing.LocationChangedEventArgs e)
+    {
+        SetActiveCommunityFromUrl();
+        InvokeAsync(StateHasChanged);
+    }
+
+    private void SetActiveCommunityFromUrl()
+    {
+        string relativePath = Nav.ToBaseRelativePath(Nav.Uri);
+        string[] parts = relativePath.Split('/', StringSplitOptions.RemoveEmptyEntries);
+
+        if (parts.Length >= 2 && parts[0].Equals("channels", StringComparison.OrdinalIgnoreCase) &&
+        Guid.TryParse(parts[1], out Guid communityId))
+        {
+            ActiveCommunityId = communityId;
+        }
+        else
+        {
+            ActiveCommunityId = null;
+        }
+    }
+
+    public void Dispose()
+    {
+        Nav.LocationChanged -= OnLocationChanged;
+    }
 
     protected override async Task OnParametersSetAsync()
     {
         using var db = await DbFactory.CreateDbContextAsync();
 
         var authState = await AuthStateProvider.GetAuthenticationStateAsync();
-        var user = authState.User;
+        cp = authState.User;
 
-        if (user.Identity?.IsAuthenticated == true)
+        if (cp.Identity?.IsAuthenticated == true)
         {
-            userId = user.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            userId = cp.FindFirst(ClaimTypes.NameIdentifier)?.Value;
         }
+
+        user = await db.Users.FirstOrDefaultAsync(u => u.Id == userId);
 
         communities = await db.Communities
             .Where(c => c.Memberships.Any(m => m.UserId == userId)).ToListAsync();
@@ -48,7 +87,7 @@
 
         Community community = new()
         {
-            Name = $"Community {DateTime.Now:HH:mm:ss}",
+            Name = $"{user!.UserName}'s Community",
             Description = "This is a new community created at " + DateTime.Now.ToString("HH:mm:ss"),
             OwnerId = userId,
             CreatedAt = DateTime.UtcNow

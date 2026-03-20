@@ -6,7 +6,8 @@
     <div class="channel-list-container">
     @foreach (var channel in channels)
     {
-        <a href="@($"/channels/{CommunityId}/{channel.Id}")" class="channel-list-item">
+        <a href="@($"/channels/{CommunityId}/{channel.Id}")"
+               class="channel-list-item @(channel.Id == ActiveChannelId ? "active" : "")">
             @channel.Name
         </a>
     }
@@ -25,6 +26,41 @@
     public Guid CommunityId { get; set; }
 
     private List<Channel>? channels;
+
+    private Guid? ActiveChannelId;
+
+    protected override void OnInitialized()
+    {
+        SetActiveChannelFromUrl();
+        Nav.LocationChanged += OnLocationChanged;
+    }
+
+    private void OnLocationChanged(object? sender, Microsoft.AspNetCore.Components.Routing.LocationChangedEventArgs e)
+    {
+        SetActiveChannelFromUrl();
+        InvokeAsync(StateHasChanged);
+    }
+
+    private void SetActiveChannelFromUrl()
+    {
+        string relativePath = Nav.ToBaseRelativePath(Nav.Uri);
+        string[] parts = relativePath.Split('/', StringSplitOptions.RemoveEmptyEntries);
+
+        if (parts.Length >= 3 && parts[0].Equals("channels", StringComparison.OrdinalIgnoreCase) &&
+        Guid.TryParse(parts[2], out Guid channelId))
+        {
+            ActiveChannelId = channelId;
+        }
+        else
+        {
+            ActiveChannelId = null;
+        }
+    }
+
+    public void Dispose()
+    {
+        Nav.LocationChanged -= OnLocationChanged;
+    }
 
     protected override async Task OnParametersSetAsync()
     {

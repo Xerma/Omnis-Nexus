@@ -1,0 +1,119 @@
+﻿
+.home-container {
+    width: 100%;
+    display: flex;
+    min-height: 0;
+}
+
+.user-stats {
+    min-width: 350px;
+    background-color: black;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    border-left: solid 1px rgb(65, 65, 65);
+    padding-bottom: 75px;
+}
+
+.com-container {
+    width: 100%;
+    background-color: rgb(10, 10, 10);
+    border-left: solid 1px rgb(65, 65, 65);
+}
+
+.com-header {
+    display: flex;
+    width: 100%;
+    min-height: 50px;
+    align-items: center;
+    justify-content: center;
+    border-bottom: solid 1px rgb(65, 65, 65);
+}
+
+    .com-header span {
+        font-size: 20px;
+        color: white;
+    }
+
+.stat-header {
+    display: flex;
+    width: 100%;
+    min-height: 50px;
+    align-items: center;
+    padding-left: 15px;
+    border-bottom: solid 1px rgb(65, 65, 65);
+}
+
+    .stat-header span {
+        font-size: 20px;
+        color: white;
+    }
+
+.stat-list {
+    display: block;
+    height: 100%;
+    width: 100%;
+    padding: 15px;
+    color: grey;
+}
+
+.logout-form {
+    width: 100%;
+    height: auto;
+    align-content: center;
+    text-align: center;
+    padding: 0 15px 0 15px;
+    margin-bottom: 15px;
+}
+
+    .logout-form button {
+        width: 100%;
+        height: 40px;
+        border-radius: 8px;
+        border: 0;
+        background-color: rgb(151, 26, 26);
+        color: rgb(206, 206, 206);
+    }
+
+        .logout-form button:hover {
+            background-color: rgb(218, 71, 71);
+            color: white;
+        }
+
+.all-coms {
+    width: 100%;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 15px;
+    box-sizing: border-box;
+    padding: 15px;
+}
+
+.com-listing {
+    flex: 0 0 calc(33.333% - 10px);
+    box-sizing: border-box;
+    height: 80px;
+    border: solid 1px rgb(65, 65, 65);
+    background-color: rgb(25, 25, 25);
+    align-items: center;
+    border-radius: 8px;
+    text-decoration: none;
+    display: flex;
+    flex-direction: row;
+    padding: 0 15px 0 15px;
+    transition: all 0.15s ease;
+}
+
+    .com-listing:hover {
+        background-color: rgb(65, 65, 65);
+        transform: translateY(-2px);
+    }
+
+.com-name {
+    color: white;
+}
+
+.com-count {
+    margin-left: auto;
+    color: grey;
+}

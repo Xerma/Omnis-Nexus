@@ -1,4 +1,5 @@
 ﻿@page "/"
+@attribute [Authorize]
 
 @inject IDbContextFactory<ApplicationDbContext> DbFactory
 @inject AuthenticationStateProvider AuthStateProvider
@@ -7,60 +8,63 @@
 
 <PageTitle>Home</PageTitle>
 
-<h1>Hello, world!</h1>
-
-Welcome to your new app.
-
-@if (communities is null)
-{
-    <p><em>Not part of any communities!</em></p>
-}
-else
-{
-    <h2>Communities</h2>
-    <ul>
-        @foreach (var community in communities)
-        {
-            <li>
-                <a href="@($"/channels/{community.Id}")">@community.Name</a>
-            </li>
-        }
-    </ul>
-}
-
-<AuthorizeView>
-    <Authorized>
-        <div class="nav-item px-3">
-            <form action="Account/Logout" method="post">
-                <AntiforgeryToken />
-                <input type="hidden" name="ReturnUrl" value="@currentUrl" />
-                <button type="submit" class="nav-link">
-                    <span class="bi bi-arrow-bar-left-nav-menu" aria-hidden="true"></span> Logout
-                </button>
-            </form>
+<div class="home-container">
+    <div class="user-stats">
+        <div class="stat-header">
+            <span>Statistics</span>
         </div>
-    </Authorized>
-    <NotAuthorized>
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="Account/Register">
-                <span class="bi bi-person-nav-menu" aria-hidden="true"></span> Register
-            </NavLink>
+
+        <div class="stat-list">
+            <Statistic statName="Communities Joined" statVal="@comsJoinedInt" />
+            <Statistic statName="Communities Owned" statVal="@comsOwnedInt" />
+            <Statistic statName="Messages Sent" statVal="@messagesSentInt" />
+            <Statistic statName="Messages Edited" statVal="@messagesEditedInt" />
         </div>
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="Account/Login">
-                <span class="bi bi-person-badge-nav-menu" aria-hidden="true"></span> Login
-            </NavLink>
+
+        <form action="Account/Logout" method="post" class="logout-form">
+            <AntiforgeryToken />
+            <input type="hidden" name="ReturnUrl" value="@currentUrl" />
+
+            <button type="submit" class="logout-button">
+                Logout
+            </button>
+        </form>
+    </div>
+
+    <div class="com-container">
+        <div class="com-header">
+            <span>Communities</span>
         </div>
-    </NotAuthorized>
-</AuthorizeView>
+        <div class="all-coms">
+            @if (allCommunities != null)
+            {
+                @foreach (var community in allCommunities!)
+                {
+                    <a href="@($"/channels/{community.Id}")" class="com-listing">
+                        <span class="com-name">@community.Name</span>
+                        <span class="com-count">@community.MemberCount</span>
+                    </a>
+                }
+            }
+        </div>
+    </div>
+</div>
 
 
 @code {
 
-    private List<Community>? communities;
+    private List<CommunityListItem>? allCommunities;
     private string? userId;
+    ClaimsPrincipal? cp;
+    ApplicationUser? user;
 
     private string? currentUrl;
+
+    private int comsJoinedInt;
+    private int messagesSentInt;
+    private int comsOwnedInt;
+    private int messagesEditedInt;
+
 
     protected override void OnInitialized()
     {
@@ -84,14 +88,40 @@ else
         using var db = await DbFactory.CreateDbContextAsync();
 
         var authState = await AuthStateProvider.GetAuthenticationStateAsync();
-        var user = authState.User;
+        cp = authState.User;
 
-        if (user.Identity?.IsAuthenticated == true)
+        if (cp.Identity?.IsAuthenticated == true)
         {
-            userId = user.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            userId = cp.FindFirst(ClaimTypes.NameIdentifier)?.Value;
         }
 
-        communities = await db.Communities.ToListAsync();
+        user = await db.Users.FirstOrDefaultAsync(u => u.Id == userId);
+
+        allCommunities = await db.Communities
+        .Select(c => new CommunityListItem
+        {
+            Id = c.Id,
+            Name = c.Name,
+            MemberCount = c.Memberships.Count()
+        })
+        .ToListAsync();
+
+        comsJoinedInt = await db.Communities
+        .Where(c => c.Memberships.Any(m => m.UserId == userId))
+        .CountAsync();
+
+        messagesSentInt = await db.Messages
+        .Where(m => m.UserId == userId)
+        .CountAsync();
+
+        comsOwnedInt = await db.Communities
+        .Where(c => c.OwnerId == userId)
+        .CountAsync();
+
+        messagesEditedInt = await db.Messages
+        .Where(m => m.UpdatedAt != null)
+        .Where(m => m.UserId == userId)
+        .CountAsync();
     }
 
 }

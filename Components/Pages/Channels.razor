@@ -58,7 +58,7 @@
                                             Edit
                                     </div>
                                         <div class="message-delete"
-                                            @onclick="() => DeleteMessage(message.Id)">Delete</div>
+                                            @onclick="() => OpenDeleteModal(message.Id)">Delete</div>
                                     </div>
 
                                     <div class="message-author-icon">
@@ -110,7 +110,8 @@
                             @bind="@messageText"
                             @onkeydown="SendMessage"
                             @bind:event="oninput"
-                            placeholder="Message @channel.Name"/>
+                            placeholder="Message @channel.Name"
+                            spellcheck="true"/>
                     </div>
                 </div>
             }
@@ -123,6 +124,21 @@
     
 
 </div>
+
+@if (showDeleteModal)
+{
+    <div class="delete-modal-backdrop" @onclick="CloseDeleteModal">
+        <div class="delete-modal" @onclick:stopPropagation="true">
+            <h5>Delete Message</h5>
+            <p>Are you sure you want to delete this message? This cannot be undone.</p>
+            <div class="del-modal-btns">
+                <span class="del-modal-can-btn" @onclick="CloseDeleteModal">Cancel</span>
+                <span class="del-modal-del-btn" @onclick="() => DeleteMessage(deleteMessageId)">Delete</span>
+            </div>
+        </div>
+    </div>
+}
+
 
 @code {
 
@@ -149,6 +165,9 @@
     private string editedMessageText = "";
 
     private ElementReference editTextArea;
+
+    private bool showDeleteModal = false;
+    private Guid deleteMessageId;
 
 
 
@@ -202,6 +221,17 @@
         {
             await editTextArea.FocusAsync();
         }
+    }
+
+    private void OpenDeleteModal(Guid id)
+    {
+        showDeleteModal = true;
+        deleteMessageId = id;
+    }
+
+    private void CloseDeleteModal()
+    {
+        showDeleteModal = false;
     }
 
     private async Task SendMessage(KeyboardEventArgs e)
@@ -306,6 +336,8 @@
         await db.SaveChangesAsync();
 
         Messages.RemoveAll(m => m.Id == id);
+
+        CloseDeleteModal();
     }
 
 }

@@ -327,3 +327,78 @@
     .message-edit:hover, .message-delete:hover {
         background-color: rgb(45, 45, 45);
     }
+
+.delete-modal-backdrop {
+    position: fixed;
+    inset: 0;
+    background-color: rgba(0, 0, 0, 0.8);
+    background-blend-mode: multiply;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+}
+
+.delete-modal {
+    padding: 20px;
+    width: 500px;
+    min-height: 200px;
+    height: auto;
+    border-radius: 8px;
+    border: solid 1px rgb(65, 65, 65);
+    background-color: rgb(10, 10, 10);
+    color: rgb(206, 206, 206);
+    display: flex;
+    flex-direction: column;
+}
+
+.delete-modal h5 {
+    font-size: 22px;
+    font-weight: 550;
+    color: white;
+}
+
+.delete-modal p {
+    font-size: 14px;
+    opacity: 0.7;
+}
+
+.del-modal-btns {
+    width: 100%;
+    display: flex;
+    flex-direction: row;
+    flex: 1 1 auto;
+    align-items: flex-end;
+}
+
+.del-modal-btns span {
+    border-radius: 8px;
+    flex: 1;
+    text-align: center;
+    align-content: center;
+    height: 40px;
+    font-weight: 550;
+    color: white;
+}
+
+.del-modal-del-btn {
+    margin-left: 10px;
+    background-color: rgb(212, 44, 44);
+}
+
+    .del-modal-del-btn:hover {
+        cursor: pointer;
+        background-color: rgb(218, 71, 71);
+        color: white;
+    }
+
+.del-modal-can-btn {
+    background-color: rgb(25, 25, 25);
+    border: solid 1px rgb(65, 65, 65);
+    margin-right: 10px;
+}
+    .del-modal-can-btn:hover {
+        cursor: pointer;
+        background-color: rgb(35, 35, 35);
+        color: white;
+    }

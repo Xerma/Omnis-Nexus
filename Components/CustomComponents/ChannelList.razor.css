@@ -18,8 +18,16 @@
     cursor: pointer;
 }
 
-.channel-list-item:hover {
-    font-weight: 400;
-    color: white;
-    background-color: rgb(20, 20, 20)
-}
+    .channel-list-item:hover {
+        cursor: pointer;
+        outline: 1px solid rgb(57, 221, 245);
+        font-weight: 400;
+        color: white;
+        background-color: rgb(20, 20, 20);
+    }
+
+    .channel-list-item.active {
+        outline: 1px solid rgb(57, 221, 245);
+        background-color: rgb(20, 20, 20);
+        color: white;
+    }

@@ -1,4 +1,5 @@
 ﻿@page "/Account/Register"
+@layout AuthLayout
 
 @using System.ComponentModel.DataAnnotations
 @using System.Text
@@ -17,15 +18,15 @@
 
 <PageTitle>Register</PageTitle>
 
-<h1>Register</h1>
+<div class="rl-row">
+    <div class="rl-content">
+        <div class="rl-header">
+            <span>Create an account</span>
+        </div>
 
-<div class="row">
-    <div class="col-lg-6">
         <StatusMessage Message="@Message" />
         <EditForm Model="Input" method="post" OnValidSubmit="RegisterUser" FormName="register">
             <DataAnnotationsValidator />
-            <h2>Create a new account.</h2>
-            <hr />
             <ValidationSummary class="text-danger" role="alert" />
             <div class="form-floating mb-3">
                 <InputText @bind-Value="Input.Username" id="Input.Username" class="form-control" autocomplete="username" aria-required="true" placeholder="Jimbo" />
@@ -50,6 +51,7 @@
             <button type="submit" class="w-100 btn btn-lg btn-primary">Register</button>
         </EditForm>
     </div>
+    <!--
     <div class="col-lg-4 col-lg-offset-2">
         <section>
             <h3>Use another service to register.</h3>
@@ -57,6 +59,7 @@
             <ExternalLoginPicker />
         </section>
     </div>
+    -->
 </div>
 
 @code {

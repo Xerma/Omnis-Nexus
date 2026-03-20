@@ -1,16 +1,18 @@
 ﻿@inherits LayoutComponentBase
 @layout OmnisNexus.Components.Layout.MainLayout
 
-<h1>Manage your account</h1>
-
-<div>
-    <h2>Change your account settings</h2>
-    <hr />
-    <div class="row">
-        <div class="col-lg-3">
-            <ManageNavMenu />
+<div class="ml-container">
+    
+    <div class="ml-sub">
+        <div class="ml-side">
+            <div class="ml-header">
+                <span>Settings</span>
+            </div>
+            <div class="ml-mn-container">
+                <ManageNavMenu />
+            </div>
         </div>
-        <div class="col-lg-9">
+        <div class="ml-content">
             @Body
         </div>
     </div>

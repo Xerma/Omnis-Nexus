@@ -1,21 +1,32 @@
 ﻿
 .community-list-item {
-    height: 60px;
-    width: 60px;
     background-color: rgb(37, 37, 37);
     text-align: center;
     font-size: 10px;
-    margin: 10px;
-    align-content: center;
-    border-radius: 15px;
     color: white;
+    height: 60px;
+    width: 60px;
+    border-radius: 15px;
+    margin: 10px;
+    display: flex;
+    align-items: center;
+    text-decoration: none;
 }
 
-.community-list-item p {
+    .community-list-item:hover {
+        cursor: pointer;
+        outline: 1px solid rgb(57, 221, 245);
+    }
+
+    .community-list-item.active {
+        outline: 2px solid rgb(57, 221, 245);
+        border: 2px solid black;
+        transition: outline 0.3s ease;
+        transition: border 0.3s ease;
+    }
+
+.cl-add {
     text-align: center;
     font-size: 40px;
-}
-
-.community-list-item p:hover {
-    cursor: pointer;
+    justify-content: center;
 }

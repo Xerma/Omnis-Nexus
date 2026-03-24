@@ -1,6 +1,7 @@
 ﻿
 .member-listing {
     display: flex;
+    margin-bottom: 10px;
 }
 
 .member-listing-image {

@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using OmnisNexus.Components;
 using OmnisNexus.Components.Account;
 using OmnisNexus.Data;
+using OmnisNexus.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -14,6 +15,10 @@ builder.Services.AddRazorComponents()
 builder.Services.AddCascadingAuthenticationState();
 builder.Services.AddScoped<IdentityRedirectManager>();
 builder.Services.AddScoped<AuthenticationStateProvider, IdentityRevalidatingAuthenticationStateProvider>();
+builder.Services.AddScoped<IPermissionService, PermissionService>();
+builder.Services.AddScoped<CommunityStateService>();
+builder.Services.AddScoped<CommunitySearchService>();
+builder.Services.AddScoped<MemberReportService>();
 
 builder.Services.AddAuthentication(options =>
     {
@@ -28,9 +33,10 @@ builder.Services.AddDbContextFactory<ApplicationDbContext>(options =>
     options.UseNpgsql(connectionString));
 builder.Services.AddDatabaseDeveloperPageExceptionFilter();
 
+//changed RequireConfirmedAccount to false for capstone (no email system in place)
 builder.Services.AddIdentityCore<ApplicationUser>(options =>
     {
-        options.SignIn.RequireConfirmedAccount = true;
+        options.SignIn.RequireConfirmedAccount = false;
         options.Stores.SchemaVersion = IdentitySchemaVersions.Version3;
     })
     .AddEntityFrameworkStores<ApplicationDbContext>()

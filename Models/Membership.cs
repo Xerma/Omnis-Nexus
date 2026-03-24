@@ -14,8 +14,7 @@ namespace OmnisNexus.Models
         public Community Community { get; set; }
 
         [MaxLength(30)]
-        public string Role { get; set; }
-        // handle if too long
+        public string Role { get; set; } = Roles.Member;
 
         public DateTime JoinedAt { get; set; }
     }

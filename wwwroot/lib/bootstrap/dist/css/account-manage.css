@@ -136,3 +136,12 @@ html, body {
 .am-pk-add {
     justify-content: center;
 }
+
+.alert-warning {
+    background-color: transparent;
+    border: none;
+}
+
+    .alert-warning p {
+        color: rgb(212, 44, 44);
+    }

@@ -8,7 +8,7 @@
 .channel-list-item {
     font-weight: 400;
     color: rgb(180, 180, 180);
-    height: 35px;
+    height: 30px;
     font-size: 15px;
     align-content: center;
     text-decoration: none;
@@ -16,11 +16,14 @@
     border-radius: 6px;
     padding-left: 10px;
     cursor: pointer;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    margin-bottom: 5px;
 }
 
     .channel-list-item:hover {
         cursor: pointer;
-        outline: 1px solid rgb(57, 221, 245);
         font-weight: 400;
         color: white;
         background-color: rgb(20, 20, 20);
@@ -31,3 +34,133 @@
         background-color: rgb(20, 20, 20);
         color: white;
     }
+
+.menu-backdrop {
+    position: fixed;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 400;
+}
+
+.channel-context-menu {
+    position: fixed;
+    width: 150px;
+    border: 1px solid rgb(65, 65, 65);
+    padding: 5px;
+    border-radius: 8px;
+    z-index: 500;
+    background-color: rgb(33, 33, 33);
+    color: white;
+}
+
+.menu-edit-btn, .menu-del-btn {
+    font-size: 15px;
+    border-radius: 3px;
+    padding: 5px;
+}
+
+    .menu-edit-btn:hover {
+        cursor: pointer;
+        background-color: rgb(65, 65, 65);
+    }
+
+    .menu-del-btn:hover {
+        cursor: pointer;
+        background-color: rgb(219, 87, 87);
+        color: white;
+    }
+
+.menu-edit-btn {
+    margin-bottom: 5px;
+}
+
+.menu-del-btn {
+    color: rgb(219, 87, 87);
+}
+
+.modal-backdrop {
+    position: fixed;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 400;
+    background-color: rgba(0, 0, 0, 0.8);
+}
+
+.channel-modal {
+    padding: 20px;
+    width: 500px;
+    min-height: 200px;
+    height: auto;
+    border-radius: 8px;
+    border: solid 1px rgb(65, 65, 65);
+    background-color: rgb(10, 10, 10);
+    color: rgb(206, 206, 206);
+    display: flex;
+    flex-direction: column;
+}
+
+.channel-modal p {
+    font-size: 14px;
+    opacity: 0.7;
+    margin-bottom: 0;
+}
+
+.modal-btns {
+    width: 100%;
+    display: flex;
+    flex-direction: row;
+    flex: 1 1 auto;
+    align-items: flex-end;
+}
+
+    .modal-btns span {
+        border-radius: 8px;
+        flex: 1;
+        text-align: center;
+        align-content: center;
+        height: 40px;
+        font-weight: 550;
+        color: white;
+    }
+
+.modal-del-btn {
+    margin-left: 10px;
+    background-color: rgb(212, 44, 44);
+}
+
+    .modal-del-btn:hover {
+        cursor: pointer;
+        background-color: rgb(218, 71, 71);
+        color: white;
+    }
+
+.modal-can-btn {
+    background-color: rgb(25, 25, 25);
+    border: solid 1px rgb(65, 65, 65);
+    margin-right: 10px;
+}
+
+    .modal-can-btn:hover {
+        cursor: pointer;
+        background-color: rgb(35, 35, 35);
+        color: white;
+    }
+
+.modal-save-btn {
+    background-color: rgb(25, 25, 25);
+    border: solid 1px rgb(65, 65, 65);
+}
+
+    .modal-save-btn:hover {
+        cursor: pointer;
+        color: white;
+        background-color: rgb(35, 35, 35);
+    }
+
+.channel-name-input {
+    border-radius: 5px;
+}

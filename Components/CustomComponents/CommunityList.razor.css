@@ -11,6 +11,9 @@
     display: flex;
     align-items: center;
     text-decoration: none;
+    justify-content: center;
+    white-space: wrap;
+    overflow: hidden;
 }
 
     .community-list-item:hover {
@@ -29,4 +32,262 @@
     text-align: center;
     font-size: 40px;
     justify-content: center;
+}
+
+.menu-backdrop {
+    position: fixed;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 400;
+}
+
+.community-context-menu {
+    position: fixed;
+    width: 150px;
+    border: 1px solid rgb(65, 65, 65);
+    padding: 5px;
+    border-radius: 8px;
+    z-index: 500;
+    background-color: rgb(33, 33, 33);
+    color: white;
+}
+
+.menu-edit-btn, .menu-del-btn {
+    font-size: 15px;
+    border-radius: 3px;
+    padding: 5px;
+}
+
+    .menu-edit-btn:hover {
+        cursor: pointer;
+        background-color: rgb(65, 65, 65);
+    }
+
+    .menu-del-btn:hover {
+        cursor: pointer;
+        background-color: rgb(219, 87, 87);
+        color: white;
+    }
+
+.menu-edit-btn {
+    margin-bottom: 5px;
+}
+
+.menu-del-btn {
+    color: rgb(219, 87, 87);
+}
+
+.modal-backdrop {
+    position: fixed;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 400;
+    background-color: rgba(0, 0, 0, 0.8);
+}
+
+.com-modal {
+    padding: 20px;
+    width: 500px;
+    min-height: 200px;
+    height: auto;
+    border-radius: 8px;
+    border: solid 1px rgb(65, 65, 65);
+    background-color: rgb(10, 10, 10);
+    color: rgb(206, 206, 206);
+    display: flex;
+    flex-direction: column;
+}
+
+    .com-modal-content p {
+        font-size: 14px;
+        opacity: 0.7;
+        margin-bottom: 0;
+    }
+
+.community-name-input {
+    width: 100%;
+    border-radius: 8px;
+}
+
+.modal-btns {
+    width: 100%;
+    display: flex;
+    flex-direction: row;
+    flex: 1 1 auto;
+    align-items: flex-end;
+}
+
+    .modal-btns span {
+        border-radius: 8px;
+        flex: 1;
+        text-align: center;
+        align-content: center;
+        height: 40px;
+        font-weight: 550;
+        color: white;
+    }
+
+.modal-del-btn {
+    margin-left: 10px;
+    background-color: rgb(212, 44, 44);
+}
+
+    .modal-del-btn:hover {
+        cursor: pointer;
+        background-color: rgb(218, 71, 71);
+        color: white;
+    }
+
+.modal-can-btn {
+    background-color: rgb(25, 25, 25);
+    border: solid 1px rgb(65, 65, 65);
+    margin-right: 10px;
+}
+
+    .modal-can-btn:hover {
+        cursor: pointer;
+        background-color: rgb(35, 35, 35);
+        color: white;
+    }
+
+.modal-save-btn {
+    background-color: rgb(25, 25, 25);
+    border: solid 1px rgb(65, 65, 65);
+}
+
+    .modal-save-btn:hover {
+        cursor: pointer;
+        color: white;
+        background-color: rgb(35, 35, 35);
+    }
+
+.channel-name-input {
+    border-radius: 5px;
+}
+
+.edit-modal {
+    padding: 0;
+    width: 800px;
+    min-height: 300px;
+    max-height: 900px;
+    overflow: hidden;
+}
+
+    .edit-modal h5 {
+        margin: 0;
+        width: 100%;
+        height: 40px;
+        align-content: center;
+        text-align: center;
+        border-bottom: solid 1px rgb(65, 65, 65);
+    }
+
+.com-modal-container {
+    display: flex;
+    flex: 1;
+}
+
+.com-modal-nav {
+    width: 150px;
+    text-align: center;
+    padding: 10px;
+    border-right: solid 1px rgb(65, 65, 65);
+    background-color: black;
+}
+
+.com-modal-nav div {
+    font-size: 15px;
+    padding: 3px 0;
+    margin-bottom: 5px;
+    border-radius: 5px;
+}
+
+    .com-modal-nav div:hover {
+        cursor: pointer;
+        color: white;
+        background-color: rgb(20, 20, 20);
+    }
+
+    .com-modal-nav div.active {
+        cursor: pointer;
+        outline: 1px solid rgb(57, 221, 245);
+        color: white;
+        background-color: rgb(20, 20, 20);
+    }
+
+.com-modal-main {
+    display: flex;
+    flex-direction: column;
+    padding: 5px 10px 10px 10px;
+    flex: 1;
+}
+
+.com-modal-content {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+}
+
+.report-modal-header {
+    width: 100%;
+    margin-bottom: 10px;
+    padding-bottom: 5px;
+    font-size: 17px;
+    border-bottom: solid 1px rgba(65, 65, 65, 0.5);
+}
+
+.report-header {
+    text-align: center;
+    color: white;
+}
+
+.report-time {
+    color: rgba(255, 255, 255, 0.2);
+    float: right;
+}
+
+.report-table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0 5px;
+}
+
+.report-row td {
+    padding: 3px 0 0 3px;
+    background-color: rgb(40, 40, 40);
+}
+
+.report-col-l {
+    border-radius: 8px 0 0 8px;
+    border-right: solid 3px rgb(10, 10, 10);
+}
+
+.report-col-c {
+    border-left: solid 3px rgb(10, 10, 10);
+}
+
+.report-col-r {
+    border-radius: 0 8px 8px 0;
+    border-left: solid 3px rgb(10, 10, 10);
+}
+
+th, td {
+    text-align: center;
+}
+
+    td select {
+        width: 100%;
+        height: 100%;
+        text-align: center;
+        background-color: rgb(40, 40, 40);
+        color: rgb(206, 206, 206);
+    }
+
+.report-row .report-role-td {
+    height: 1px;
+    padding: 0;
 }

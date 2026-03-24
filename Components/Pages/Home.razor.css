@@ -107,6 +107,7 @@
     .com-listing:hover {
         background-color: rgb(65, 65, 65);
         transform: translateY(-2px);
+        cursor: pointer;
     }
 
 .com-name {

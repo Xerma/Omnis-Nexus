@@ -4,6 +4,7 @@
 @inject IDbContextFactory<ApplicationDbContext> DbFactory
 @inject AuthenticationStateProvider AuthStateProvider
 @inject NavigationManager Nav
+@inject CommunityStateService CommunityState
 
 
 <PageTitle>Home</PageTitle>
@@ -40,10 +41,10 @@
             {
                 @foreach (var community in allCommunities!)
                 {
-                    <a href="@($"/channels/{community.Id}")" class="com-listing">
+                    <div @onclick="() => JoinOrNavCommunity(community.Id)" class="com-listing">
                         <span class="com-name">@community.Name</span>
                         <span class="com-count">@community.MemberCount</span>
-                    </a>
+                    </div>
                 }
             }
         </div>
@@ -122,6 +123,40 @@
         .Where(m => m.UpdatedAt != null)
         .Where(m => m.UserId == userId)
         .CountAsync();
+    }
+
+    private async Task JoinOrNavCommunity(Guid communityId)
+    {
+        using var db = await DbFactory.CreateDbContextAsync();
+
+        Membership? membership = await db.Memberships.FirstOrDefaultAsync(m => m.UserId == userId && m.CommunityId == communityId);
+
+        if (membership == null)
+        {
+            Community? community = await db.Communities.FirstOrDefaultAsync(c => c.Id == communityId);
+
+            if (userId == null || community == null) return;
+
+            Membership m = new()
+            {
+                UserId = userId,
+                Community = community,
+                Role = Roles.Member,
+                JoinedAt = DateTime.UtcNow
+            };
+
+            await db.Memberships.AddAsync(m);
+            db.SaveChanges();
+
+            var updatedCommunities = await db.Memberships
+            .Where(m => m.UserId == userId)
+            .Select(m => m.Community)
+            .ToListAsync();
+
+            CommunityState.SetCommunities(updatedCommunities);
+        }
+
+        Nav.NavigateTo($"/channels/{communityId}");
     }
 
 }

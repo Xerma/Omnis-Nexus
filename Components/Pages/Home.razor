@@ -5,6 +5,8 @@
 @inject AuthenticationStateProvider AuthStateProvider
 @inject NavigationManager Nav
 @inject CommunityStateService CommunityState
+@inject HomeService HomeService
+@inject ErrorService ErrorService
 
 
 <PageTitle>Home</PageTitle>
@@ -55,12 +57,12 @@
 @code {
 
     private List<CommunityListItem>? allCommunities;
-    private string? userId;
+    private string? userId = "";
     ClaimsPrincipal? cp;
-    ApplicationUser? user;
 
     private string? currentUrl;
 
+    HomeStats stats = new();
     private int comsJoinedInt;
     private int messagesSentInt;
     private int comsOwnedInt;
@@ -96,67 +98,46 @@
             userId = cp.FindFirst(ClaimTypes.NameIdentifier)?.Value;
         }
 
-        user = await db.Users.FirstOrDefaultAsync(u => u.Id == userId);
-
-        allCommunities = await db.Communities
-        .Select(c => new CommunityListItem
+        try
         {
-            Id = c.Id,
-            Name = c.Name,
-            MemberCount = c.Memberships.Count()
-        })
-        .ToListAsync();
+            allCommunities = await HomeService.GetAllCommunitiesAsync();
+        }
+        catch (Exception e)
+        {
+            await ErrorService.ShowErrorAsync("Error getting communities.");
+            Console.WriteLine($"Error getting communities: {e.Message}");
+        }
 
-        comsJoinedInt = await db.Communities
-        .Where(c => c.Memberships.Any(m => m.UserId == userId))
-        .CountAsync();
+        if (string.IsNullOrWhiteSpace(userId)) return;
 
-        messagesSentInt = await db.Messages
-        .Where(m => m.UserId == userId)
-        .CountAsync();
-
-        comsOwnedInt = await db.Communities
-        .Where(c => c.OwnerId == userId)
-        .CountAsync();
-
-        messagesEditedInt = await db.Messages
-        .Where(m => m.UpdatedAt != null)
-        .Where(m => m.UserId == userId)
-        .CountAsync();
+        try
+        {
+            stats = await HomeService.GetStatsAsync(userId);
+            comsJoinedInt = stats.CommunitiesJoined;
+            messagesSentInt = stats.MessagesSent;
+            comsOwnedInt = stats.CommunitiesOwned;
+            messagesEditedInt = stats.MessagesEdited;
+        }
+        catch (Exception e)
+        {
+            await ErrorService.ShowErrorAsync("Error getting user statistics.");
+            Console.WriteLine($"Error getting user statistics: {e.Message}");
+        }
     }
 
     private async Task JoinOrNavCommunity(Guid communityId)
     {
-        using var db = await DbFactory.CreateDbContextAsync();
-
-        Membership? membership = await db.Memberships.FirstOrDefaultAsync(m => m.UserId == userId && m.CommunityId == communityId);
-
-        if (membership == null)
+        try
         {
-            Community? community = await db.Communities.FirstOrDefaultAsync(c => c.Id == communityId);
-
-            if (userId == null || community == null) return;
-
-            Membership m = new()
-            {
-                UserId = userId,
-                Community = community,
-                Role = Roles.Member,
-                JoinedAt = DateTime.UtcNow
-            };
-
-            await db.Memberships.AddAsync(m);
-            db.SaveChanges();
-
-            var updatedCommunities = await db.Memberships
-            .Where(m => m.UserId == userId)
-            .Select(m => m.Community)
-            .ToListAsync();
-
-            CommunityState.SetCommunities(updatedCommunities);
+            string? navTo = await HomeService.JoinOrNavCommunity(communityId, userId);
+            await CommunityState.LoadUserCommunitiesAsync(AuthStateProvider);
+            Nav.NavigateTo($"/channels/{communityId}");
         }
-
-        Nav.NavigateTo($"/channels/{communityId}");
+        catch (Exception e)
+        {
+            await ErrorService.ShowErrorAsync("Error joining community.");
+            Console.WriteLine($"Error joining community: {e.Message}");
+        }
     }
 
 }

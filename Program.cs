@@ -17,8 +17,15 @@ builder.Services.AddScoped<IdentityRedirectManager>();
 builder.Services.AddScoped<AuthenticationStateProvider, IdentityRevalidatingAuthenticationStateProvider>();
 builder.Services.AddScoped<IPermissionService, PermissionService>();
 builder.Services.AddScoped<CommunityStateService>();
+builder.Services.AddScoped<ChannelStateService>();
 builder.Services.AddScoped<CommunitySearchService>();
 builder.Services.AddScoped<MemberReportService>();
+builder.Services.AddScoped<ChannelListService>();
+builder.Services.AddScoped<ErrorService>();
+builder.Services.AddScoped<CommunityListService>();
+builder.Services.AddScoped<MessagingService>();
+builder.Services.AddScoped<MessageStateService>();
+builder.Services.AddScoped<HomeService>();
 
 builder.Services.AddAuthentication(options =>
     {

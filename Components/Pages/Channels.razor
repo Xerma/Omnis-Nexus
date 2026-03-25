@@ -1,10 +1,13 @@
 ﻿@page "/channels/{CommunityId:guid}"
-@page "/channels/{CommunityId:guid}/{ChannelId:guid}"
+@page "/channels/{CommunityId:guid}/{CurrentChannelId:guid}"
 
 @inject IDbContextFactory<ApplicationDbContext> DbFactory
 @inject NavigationManager Nav
 @inject AuthenticationStateProvider AuthStateProvider
 @inject IPermissionService PermService
+@inject MessagingService MessageService
+@inject ErrorService ErrorService
+@inject MessageStateService MessageState
 
 
 <PageTitle>@pageTitle</PageTitle>
@@ -52,7 +55,7 @@
                 <div class="channel-view">
                     <div class="message-list-outer">
                         <div class="message-list-inner">
-                            @foreach (Message message in Messages)
+                            @foreach (Message message in MessageState.Messages)
                             {
                                 <div class="message">
                                     @if (PermService.CanEditMessage(currMembership!, message) || PermService.CanDeleteMessage(currMembership!, message))
@@ -133,7 +136,7 @@
         @if (showMemberList)
         {
             <div class="member-list">
-                <MemberList CommunityId="CommunityId" ChannelId="ChannelId" />
+                <MemberList CommunityId="CommunityId" ChannelId="CurrentChannelId" />
             </div>
         }
         
@@ -169,7 +172,7 @@
     public Guid CommunityId { get; set; }
 
     [Parameter]
-    public Guid? ChannelId { get; set; }
+    public Guid CurrentChannelId { get; set; }
 
     private string pageTitle => community is not null ? $"{community!.Name}" : "Error: Community Not Found";
 
@@ -178,7 +181,6 @@
 
     private Membership? currMembership;
 
-    private List<Message> Messages = new();
     private string? messageText;
 
     ClaimsPrincipal? cp;
@@ -196,7 +198,7 @@
 
     private bool showMemberList = true;
     private bool showSearchContent = false;
-    private string searchText;
+    private string? searchText;
 
 
     protected override async Task OnParametersSetAsync()
@@ -213,11 +215,11 @@
 
         user = await db.Users.FirstOrDefaultAsync(u => u.Id == userId);
 
-        if (ChannelId == null)
+        if (CurrentChannelId == Guid.Empty)
         {
             Channel? firstChannel = await db.Channels
             .Where(c => c.CommunityId == CommunityId)
-            .OrderBy(c => c.Name)
+            .OrderBy(c => c.CreatedAt)
             .FirstOrDefaultAsync();
 
             if (firstChannel != null)
@@ -228,23 +230,17 @@
         }
 
         community = await db.Communities.FirstOrDefaultAsync(c =>
-        c.Id == CommunityId);
+            c.Id == CommunityId);
 
         channel = await db.Channels.FirstOrDefaultAsync(c => 
-            c.Id == ChannelId && 
+            c.Id == CurrentChannelId && 
             c.CommunityId == CommunityId);
 
-        if (ChannelId == null) return;
-
-        Messages = await db.Messages
-        .Include(m => m.User)
-        .Where(m => m.ChannelId == ChannelId.Value)
-        .OrderBy(m => m.CreatedAt)
-        .ToListAsync();
+        await MessageState.LoadMessagesAsync(CurrentChannelId);
 
         currMembership = await db.Memberships.FirstOrDefaultAsync(m =>
             m.UserId == userId &&
-        m.CommunityId == CommunityId);
+            m.CommunityId == CommunityId);
     }
 
     private async Task HandleSearch(KeyboardEventArgs e)
@@ -300,34 +296,21 @@
 
     private async Task SendMessage(KeyboardEventArgs e)
     {
-        if (e.Key == "Enter" && !e.ShiftKey)
+        try
         {
-            using var db = await DbFactory.CreateDbContextAsync();
-
-            if (ChannelId == null || channel == null) return;
-            if (string.IsNullOrWhiteSpace(messageText))
+            if (e.Key == "Enter" && !e.ShiftKey)
             {
+                if (string.IsNullOrWhiteSpace(messageText) || channel == null || userId == null) return;
+                await MessageService.SendMessageAsync(CurrentChannelId, messageText, userId);
+                await MessageState.LoadMessagesAsync(CurrentChannelId);
                 messageText = "";
-                return;
             }
-
-            Message message = new()
-            {
-                ChannelId = ChannelId.Value,
-                UserId = userId!,
-                Content = messageText.Trim()
-            };
-
-            db.Messages.Add(message);
-            await db.SaveChangesAsync();
-
-            messageText = "";
-
-            Messages = await db.Messages
-            .Include(m => m.User)
-            .Where(m => m.ChannelId == ChannelId.Value)
-            .OrderBy(m => m.CreatedAt)
-            .ToListAsync();
+        }
+        catch (Exception ex)
+        {
+            await ErrorService.ShowErrorAsync("Error sending message.");
+            Console.WriteLine($"Error sending message: {ex.Message}");
+            return;
         }
     }
 
@@ -345,9 +328,6 @@
 
     private async Task HandleEditKey(Guid id, KeyboardEventArgs e)
     {
-        using var db = await DbFactory.CreateDbContextAsync();
-        Message? m = await db.Messages.FindAsync(id);
-
         if (e.Key == "Enter" && !e.ShiftKey)
         {
             await SaveEdit(id);
@@ -361,47 +341,36 @@
 
     private async Task SaveEdit(Guid id)
     {
-        using var db = await DbFactory.CreateDbContextAsync();
-        Message? m = await db.Messages.FindAsync(id);
-
-        string newText = editedMessageText.Trim();
-        DateTime now = DateTime.UtcNow;
-
-        if (m is null || string.IsNullOrWhiteSpace(newText)) return;
-        if (m.Content == newText)
+        try
         {
-            CancelEdit();
+            bool success = await MessageService.SaveEditAsync(id, editedMessageText);
+            if (!success) CancelEdit();
+            await MessageState.LoadMessagesAsync(CurrentChannelId);
+            editingMessageId = null;
+            editedMessageText = "";
+        }
+        catch (Exception e)
+        {
+            await ErrorService.ShowErrorAsync("Error saving message.");
+            Console.WriteLine($"Error saving message: {e.Message}");
             return;
         }
-
-        m.Content = newText;
-        m.UpdatedAt = now;
-        await db.SaveChangesAsync();
-
-        Message? localMessage = Messages.FirstOrDefault(m => m.Id == id);
-        if (localMessage is not null)
-        {
-            localMessage.Content = newText;
-            localMessage.UpdatedAt = now;
-        }
-
-        editingMessageId = null;
-        editedMessageText = "";
     }
 
     private async Task DeleteMessage(Guid id)
     {
-        using var db = await DbFactory.CreateDbContextAsync();
-        Message? m = await db.Messages.FindAsync(id);
-
-        if (m is null) return;
-
-        db.Remove(m);
-        await db.SaveChangesAsync();
-
-        Messages.RemoveAll(m => m.Id == id);
-
-        CloseDeleteModal();
+        try
+        {
+            await MessageService.DeleteMessageAsync(id);
+            await MessageState.LoadMessagesAsync(CurrentChannelId);
+            CloseDeleteModal();
+        }
+        catch (Exception e)
+        {
+            await ErrorService.ShowErrorAsync("Error deleting message.");
+            Console.WriteLine($"Error deleting message: {e.Message}");
+            return;
+        }
     }
 
 }

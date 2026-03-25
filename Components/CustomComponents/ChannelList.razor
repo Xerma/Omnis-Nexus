@@ -2,11 +2,14 @@
 @inject NavigationManager Nav
 @inject IPermissionService PermService
 @inject AuthenticationStateProvider AuthStateProvider
+@inject ChannelListService ChanService
+@inject ChannelStateService ChanState
+@inject ErrorService ErrorService
 
-@if (channels is not null)
+@if (ChanState.Channels.Any())
 {
     <div class="channel-list-container">
-        @foreach (var channel in channels)
+        @foreach (var channel in ChanState.Channels)
         {
             <a href="@($"/channels/{CommunityId}/{channel.Id}")" class="channel-list-item @(channel.Id == ActiveChannelId ? "active" : "")"
             @oncontextmenu:preventDefault="true" @oncontextmenu="(e) => OpenChannelMenu(e, channel)">
@@ -16,9 +19,7 @@
 
         @if (PermService.CanManageChannels(currMembership))
         {
-            <div class="channel-list-item">
-                <span @onclick="OpenNewChannelModal">Create Channel</span>
-            </div>
+            <div class="channel-list-item" @onclick="OpenNewChannelModal">Create Channel</div>
         }
     </div>
 }
@@ -42,7 +43,7 @@
             <input type="text" class="channel-name-input" @bind="@newChannelName" />
             <div class="modal-btns">
                 <span class="modal-can-btn" @onclick="CloseEditChannelModal">Cancel</span>
-                <span class="modal-save-btn" @onclick="() => SaveChannelEdits(channelForMenu)">Save</span>
+                <span class="modal-save-btn" @onclick="SaveChannelEdits">Save</span>
                 <span class="modal-del-btn" @onclick="OpenDeleteChannelModal">Delete</span>
             </div>
         </div>
@@ -56,7 +57,7 @@
             <p>Are you sure you want to delete <b>@channelForMenu.Name</b>?</p>
             <div class="modal-btns">
                 <span class="modal-can-btn" @onclick="CloseDeleteChannelModal">Cancel</span>
-                <span class="modal-del-btn" @onclick="() => DeleteChannel(channelForMenu)">Delete</span>
+                <span class="modal-del-btn" @onclick="() => DeleteChannel()">Delete</span>
             </div>
         </div>
     </div>
@@ -71,7 +72,7 @@
             <input type="text" class="channel-name-input" @bind="@createChannelName" />
             <div class="modal-btns">
                 <span class="modal-can-btn" @onclick="CloseNewChannelModal">Cancel</span>
-                <span class="modal-del-btn" @onclick="() => CreateChannel(createChannelName)">Create</span>
+                <span class="modal-del-btn" @onclick="CreateChannel">Create</span>
             </div>
         </div>
     </div>
@@ -82,8 +83,7 @@
     [Parameter]
     public Guid CommunityId { get; set; }
 
-    private List<Channel>? channels;
-    private Guid? ActiveChannelId;
+    private Guid ActiveChannelId;
     private Membership? currMembership;
 
     ClaimsPrincipal? cp;
@@ -101,6 +101,77 @@
     private string newChannelName;
     private string createChannelName;
 
+    protected override async Task OnParametersSetAsync()
+    {
+        using var db = await DbFactory.CreateDbContextAsync();
+
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        cp = authState.User;
+
+        if (cp.Identity?.IsAuthenticated == true)
+        {
+            userId = cp.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        }
+
+        await ChanState.LoadChannelsAsync(AuthStateProvider, CommunityId);
+
+        currMembership = await db.Memberships.FirstOrDefaultAsync(m =>
+            m.UserId == userId &&
+            m.CommunityId == CommunityId);
+    }
+
+    private async Task CreateChannel()
+    {
+        try
+        {
+            var channelId = await ChanService.CreateChannelAsync(createChannelName, CommunityId);
+            await ChanState.LoadChannelsAsync(AuthStateProvider, CommunityId);
+            Nav.NavigateTo($"/channels/{CommunityId}/{channelId}");
+        }
+        catch (Exception e)
+        {
+            await ErrorService.ShowErrorAsync("Error creating new channel.");
+            Console.WriteLine($"Error creating channel: {e.Message}");
+            return;
+        }
+        CloseNewChannelModal();
+    }
+
+    private async Task SaveChannelEdits()
+    {
+        try
+        {
+            await ChanService.SaveChannelEditsAsync(channelForMenu, newChannelName);
+            await ChanState.LoadChannelsAsync(AuthStateProvider, CommunityId);
+        }
+        catch (Exception e)
+        {
+            await ErrorService.ShowErrorAsync("Error saving channel.");
+            Console.WriteLine($"Error saving channel edits: {e.Message}");
+            return;
+        }
+        CloseEditChannelModal();
+    }
+
+    private async Task DeleteChannel()
+    {
+        try
+        {
+            Guid? navTo = await ChanService.DeleteChannelAsync(channelForMenu, ActiveChannelId, CommunityId);
+            await ChanState.LoadChannelsAsync(AuthStateProvider, CommunityId);
+            if (navTo.HasValue)
+            {
+                Nav.NavigateTo($"/channels/{navTo}");
+            }
+        }
+        catch (Exception e)
+        {
+            await ErrorService.ShowErrorAsync("Error deleting channel.");
+            Console.WriteLine($"Error deleting channel: {e.Message}");
+            return;
+        }
+        CloseDeleteChannelModal();
+    }
 
     private void OpenChannelMenu(MouseEventArgs e, Channel channel)
     {
@@ -108,36 +179,6 @@
         channelMenuX = e.ClientX;
         channelMenuY = e.ClientY;
         showChannelMenu = true;
-    }
-
-    private async Task SaveChannelEdits(Channel channel)
-    {
-        using var db = DbFactory.CreateDbContext();
-        Channel? c = await db.Channels.FindAsync(channel.Id);
-
-        if (channel != null && IsChannelNameValid(newChannelName))
-        {
-            c.Name = newChannelName.Trim();
-            await db.SaveChangesAsync();
-            newChannelName = "";
-            CloseEditChannelModal();
-        }
-    }
-
-    private async Task DeleteChannel(Channel channel)
-    {
-        using var db = DbFactory.CreateDbContext();
-
-        if (channel != null)
-        {
-            db.Channels.Remove(channel);
-            await db.SaveChangesAsync();
-        }
-        if (channel.Id == channelForMenu.Id)
-        {
-            Nav.NavigateTo($"/channels/{CommunityId}");
-        }
-        CloseDeleteChannelModal();
     }
 
     private void CloseChannelMenu()
@@ -181,94 +222,28 @@
 
     protected override void OnInitialized()
     {
-        SetActiveChannelFromUrl();
+        string relativePath = Nav.ToBaseRelativePath(Nav.Uri);
+        ActiveChannelId = ChanService.SetActiveChannelFromUrl(relativePath);
         Nav.LocationChanged += OnLocationChanged;
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        ChanState.OnChange += StateHasChanged;
     }
 
     private void OnLocationChanged(object? sender, Microsoft.AspNetCore.Components.Routing.LocationChangedEventArgs e)
     {
-        SetActiveChannelFromUrl();
+        string relativePath = Nav.ToBaseRelativePath(Nav.Uri);
+        ActiveChannelId = ChanService.SetActiveChannelFromUrl(relativePath);
         InvokeAsync(StateHasChanged);
         CloseChannelMenu();
-    }
-
-    private void SetActiveChannelFromUrl()
-    {
-        string relativePath = Nav.ToBaseRelativePath(Nav.Uri);
-        string[] parts = relativePath.Split('/', StringSplitOptions.RemoveEmptyEntries);
-
-        if (parts.Length >= 3 && parts[0].Equals("channels", StringComparison.OrdinalIgnoreCase) &&
-        Guid.TryParse(parts[2], out Guid channelId))
-        {
-            ActiveChannelId = channelId;
-        }
-        else
-        {
-            ActiveChannelId = null;
-        }
     }
 
     public void Dispose()
     {
         Nav.LocationChanged -= OnLocationChanged;
-    }
-
-    protected override async Task OnParametersSetAsync()
-    {
-        using var db = await DbFactory.CreateDbContextAsync();
-
-        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
-        cp = authState.User;
-
-        if (cp.Identity?.IsAuthenticated == true)
-        {
-            userId = cp.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-        }
-
-        channels = await db.Channels
-            .Where(c => c.CommunityId == CommunityId)
-            .OrderBy(c => c.CreatedAt)
-            .ToListAsync();
-
-        currMembership = await db.Memberships.FirstOrDefaultAsync(m =>
-            m.UserId == userId &&
-            m.CommunityId == CommunityId);
-    }
-
-    private async Task CreateChannel(string name)
-    {
-        if (IsChannelNameValid(name))
-        {
-            using var db = await DbFactory.CreateDbContextAsync();
-
-            Community? community = await db.Communities.FirstOrDefaultAsync(c => c.Id == CommunityId);
-
-            if (community == null) return;
-
-            Channel channel = new()
-            {
-                Name = name,
-                CommunityId = CommunityId,
-                Community = community
-            };
-
-            db.Channels.Add(channel);
-            await db.SaveChangesAsync();
-
-            Nav.NavigateTo($"/channels/{community.Id}/{channel.Id}");
-
-            channels = await db.Channels
-                .Where(c => c.CommunityId == CommunityId)
-                .OrderBy(c => c.CreatedAt)
-                .ToListAsync();
-
-            CloseNewChannelModal();
-        }
-    }
-
-    private bool IsChannelNameValid(string name)
-    {
-        return name.Length <= 50 && !string.IsNullOrWhiteSpace(name);
+        ChanState.OnChange -= StateHasChanged;
     }
 
 }

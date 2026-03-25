@@ -1,0 +1,31 @@
+﻿@inject ErrorService ErrorService
+@implements IDisposable
+
+@if (!string.IsNullOrWhiteSpace(ErrorService.ErrorMessage))
+{
+    <div class="on-error-container">
+        <div class="on-error-popup">
+            @ErrorService.ErrorMessage
+        </div>
+    </div>
+}
+
+
+@code {
+
+    protected override void OnInitialized()
+    {
+        ErrorService.OnChange += HandleChange;
+    }
+
+    public void Dispose()
+    {
+        ErrorService.OnChange -= HandleChange;
+    }
+
+    private void HandleChange()
+    {
+        InvokeAsync(StateHasChanged);
+    }
+
+}

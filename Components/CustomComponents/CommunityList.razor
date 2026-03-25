@@ -4,6 +4,8 @@
 @inject CommunityStateService CommunityState
 @inject IPermissionService PermService
 @inject MemberReportService MemRepService
+@inject CommunityListService ComListService
+@inject ErrorService ErrorService
 
 @if (CommunityState.UserCommunities.Any())
 {
@@ -68,7 +70,7 @@
                             <input type="text" class="community-name-input" @bind="@newComName" />
                             <div class="modal-btns">
                                 <span class="modal-can-btn" @onclick="CloseEditCommunityModal">Cancel</span>
-                                <span class="modal-save-btn" @onclick="() => SaveCommunityEdits(communityForMenu)">Save</span>
+                                <span class="modal-save-btn" @onclick="SaveCommunityEdits">Save</span>
                                 @if (currMembership.Role == Roles.Owner)
                                 {
                                     <span class="modal-del-btn" @onclick="OpenDeleteCommunityModal">Delete</span>
@@ -126,7 +128,7 @@
             <p>Are you sure you want to delete <b>@communityForMenu.Name</b>?</p>
             <div class="modal-btns">
                 <span class="modal-can-btn" @onclick="CloseDeleteCommunityModal">Cancel</span>
-                <span class="modal-del-btn" @onclick="() => DeleteCommunity(communityForMenu)">Delete</span>
+                <span class="modal-del-btn" @onclick="DeleteCommunity">Delete</span>
             </div>
         </div>
     </div>
@@ -139,7 +141,7 @@
             <p>Are you sure you want to leave <b>@communityForMenu.Name</b>?</p>
             <div class="modal-btns">
                 <span class="modal-can-btn" @onclick="CloseLeaveCommunityModal">Cancel</span>
-                <span class="modal-del-btn" @onclick="() => LeaveCommunity(communityForMenu)">Leave</span>
+                <span class="modal-del-btn" @onclick="LeaveCommunity">Leave</span>
             </div>
         </div>
     </div>
@@ -148,7 +150,7 @@
 
 @code {
 
-    private Guid? ActiveCommunityId;
+    private Guid ActiveCommunityId;
 
     ClaimsPrincipal? cp;
     ApplicationUser? user;
@@ -188,17 +190,11 @@
 
     private async Task UpdateMemberRole(string userId, Guid communityId, string newRole)
     {
-        if (string.IsNullOrWhiteSpace(newRole)) return;
-
-        using var db = await DbFactory.CreateDbContextAsync();
-        Membership? currMembership = await db.Memberships.FirstOrDefaultAsync(m => m.UserId == userId && m.CommunityId == communityId);
-
-        if (currMembership == null || currMembership.Role == Roles.Owner) return;
-
-        currMembership.Role = newRole;
-        await db.SaveChangesAsync();
-
-        memberReportItems = await MemRepService.GetMemberReport(communityId);
+        bool updated = await ComListService.UpdateMemberRoleAsync(userId, communityId, newRole);
+        if (updated)
+        {
+            memberReportItems = await MemRepService.GetMemberReport(communityId);
+        }
     }
 
     private void ShowModalOverview()
@@ -232,52 +228,75 @@
         showCommunityMenu = true;
     }
 
-    private async Task SaveCommunityEdits(Community community)
+    private async Task CreateCommunity()
     {
-        using var db = DbFactory.CreateDbContext();
-        Community? c = await db.Communities.FindAsync(community.Id);
-
-        if (community != null && !string.IsNullOrWhiteSpace(newComName))
+        try
         {
-            c.Name = newComName.Trim();
-            await db.SaveChangesAsync();
-            await LoadUserCommunities();
-            newComName = "";
-            CloseEditCommunityModal();
+            Guid[] newCommunityIds = await ComListService.CreateCommunityAsync(user);
+            await CommunityState.LoadUserCommunitiesAsync(AuthStateProvider);
+            Nav.NavigateTo($"/channels/{newCommunityIds[0]}/{newCommunityIds[1]}");
+        }
+        catch (Exception e)
+        {
+            await ErrorService.ShowErrorAsync("Error creating community.");
+            Console.WriteLine($"Error creating community: {e.Message}");
+            return;
         }
     }
 
-    private async Task DeleteCommunity(Community community)
+    private async Task SaveCommunityEdits()
     {
-        using var db = DbFactory.CreateDbContext();
-
-        if (community != null)
+        try
         {
-            db.Communities.Remove(community);
-            await db.SaveChangesAsync();
-            await LoadUserCommunities();
+            await ComListService.SaveCommunityEditsAsync(communityForMenu, newComName);
+            await CommunityState.LoadUserCommunitiesAsync(AuthStateProvider);
+            newComName = "";
         }
-        if (community.Id == communityForMenu.Id)
+        catch (Exception e)
         {
-            Nav.NavigateTo("");
+            await ErrorService.ShowErrorAsync("Error saving community edits.");
+            Console.WriteLine($"Error saving community edits: {e.Message}");
+            return;
+        }
+        CloseEditCommunityModal();
+    }
+
+    private async Task DeleteCommunity()
+    {
+        try
+        {
+            string? navTo = await ComListService.DeleteCommunityAsync(communityForMenu, ActiveCommunityId);
+            await CommunityState.LoadUserCommunitiesAsync(AuthStateProvider);
+            if (navTo != null)
+            {
+                Nav.NavigateTo(navTo);
+            }
+        }
+        catch (Exception e)
+        {
+            await ErrorService.ShowErrorAsync("Error deleting community.");
+            Console.WriteLine($"Error deleting community: {e.Message}");
+            return;
         }
         CloseDeleteCommunityModal();
     }
 
-    private async Task LeaveCommunity(Community community)
+    private async Task LeaveCommunity()
     {
-        using var db = DbFactory.CreateDbContext();
-        Membership? membership = await db.Memberships.FirstOrDefaultAsync(m => m.CommunityId == community.Id && m.UserId == userId);
-
-        if (community != null)
+        try
         {
-            db.Memberships.Remove(membership);
-            await db.SaveChangesAsync();
-            await LoadUserCommunities();
+            string? navTo = await ComListService.LeaveCommunityAsync(communityForMenu, ActiveCommunityId, userId);
+            await CommunityState.LoadUserCommunitiesAsync(AuthStateProvider);
+            if (navTo != null)
+            {
+                Nav.NavigateTo(navTo);
+            }
         }
-        if (community.Id == ActiveCommunityId)
+        catch (Exception e)
         {
-            Nav.NavigateTo("");
+            await ErrorService.ShowErrorAsync("Error leaving community.");
+            Console.WriteLine($"Error leaving community: {e.Message}");
+            return;
         }
         CloseLeaveCommunityModal();
     }
@@ -328,104 +347,37 @@
 
     protected override void OnInitialized()
     {
-        SetActiveCommunityFromUrl();
+        string relativePath = Nav.ToBaseRelativePath(Nav.Uri);
+        ActiveCommunityId = ComListService.SetActiveCommunityFromUrl(relativePath);
         Nav.LocationChanged += OnLocationChanged;
     }
 
     private void OnLocationChanged(object? sender, Microsoft.AspNetCore.Components.Routing.LocationChangedEventArgs e)
     {
-        SetActiveCommunityFromUrl();
+        string relativePath = Nav.ToBaseRelativePath(Nav.Uri);
+        ActiveCommunityId = ComListService.SetActiveCommunityFromUrl(relativePath);
         InvokeAsync(StateHasChanged);
         CloseCommunityMenu();
     }
 
-    private void SetActiveCommunityFromUrl()
-    {
-        string relativePath = Nav.ToBaseRelativePath(Nav.Uri);
-        string[] parts = relativePath.Split('/', StringSplitOptions.RemoveEmptyEntries);
-
-        if (parts.Length >= 2 && parts[0].Equals("channels", StringComparison.OrdinalIgnoreCase) &&
-        Guid.TryParse(parts[1], out Guid communityId))
-        {
-            ActiveCommunityId = communityId;
-        }
-        else
-        {
-            ActiveCommunityId = null;
-        }
-    }
-
     protected override async Task OnInitializedAsync()
     {
-        CommunityState.OnChange += StateHasChanged;
+        CommunityState.OnChange += HandleChange;
         if (!CommunityState.UserCommunities.Any())
         {
-            await LoadUserCommunities();
+            await CommunityState.LoadUserCommunitiesAsync(AuthStateProvider);
         }
-    }
-
-    private async Task LoadUserCommunities()
-    {
-        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
-        var userId = authState.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-
-        if (string.IsNullOrEmpty(userId)) return;
-
-        using var db = await DbFactory.CreateDbContextAsync();
-
-        var communities = await db.Memberships
-            .Where(m => m.UserId == userId)
-            .Select(m => m.Community)
-            .ToListAsync();
-
-        CommunityState.SetCommunities(communities);
     }
 
     public void Dispose()
     {
-        CommunityState.OnChange -= StateHasChanged;
+        CommunityState.OnChange -= HandleChange;
         Nav.LocationChanged -= OnLocationChanged;
     }
 
-    public async Task CreateCommunity()
+    private void HandleChange()
     {
-        using var db = await DbFactory.CreateDbContextAsync();
-
-        if (userId == null) return;
-
-        Community community = new()
-        {
-            Name = $"{user!.UserName}'s Community",
-            Description = "This is a new community created at " + DateTime.Now.ToString("HH:mm:ss"),
-            OwnerId = userId,
-            CreatedAt = DateTime.UtcNow
-        };
-
-        Membership membership = new()
-        {
-            UserId = userId,
-            Community = community,
-            Role = Roles.Owner,
-            JoinedAt = DateTime.UtcNow
-        };
-
-        db.Communities.Add(community);
-        db.Memberships.Add(membership);
-        await db.SaveChangesAsync();
-
-        await LoadUserCommunities();
-
-        Channel channel = new()
-        {
-            Name = "General",
-            CommunityId = community.Id,
-            Community = community,
-            CreatedAt = DateTime.UtcNow
-        };
-        db.Channels.Add(channel);
-        await db.SaveChangesAsync();
-
-        Nav.NavigateTo($"/channels/{community.Id}/{channel.Id}");
+        InvokeAsync(StateHasChanged);
     }
 
 }

@@ -76,6 +76,13 @@
     min-height: 50px;
     border-bottom: solid 1px rgb(65, 65, 65);
     align-content: center;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.community-menu {
+    padding-right: 15px;
 }
 
 .channel-titlebar {
@@ -205,6 +212,7 @@
     background-color: black;
     overflow-x: hidden;
     overflow-y: scroll;
+    z-index: 50;
 }
 
     .search-list::-webkit-scrollbar {
@@ -456,3 +464,9 @@
         background-color: rgb(35, 35, 35);
         color: white;
     }
+
+.search-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 40;
+}

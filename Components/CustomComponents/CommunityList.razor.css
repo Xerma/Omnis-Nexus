@@ -10,20 +10,35 @@
     margin: 10px;
     display: flex;
     align-items: center;
-    text-decoration: none;
     justify-content: center;
-    white-space: wrap;
+    text-decoration: none;
     overflow: hidden;
+    padding: 4px;
+    box-sizing: border-box;
+    transition: box-shadow 0.15s ease;
 }
+
+    .community-list-item span {
+        width: 100%;
+        line-height: 1.1;
+        max-height: calc(1.1em *3);
+        display: -webkit-box;
+        -webkit-box-orient: vertical;
+        -webkit-line-clamp: 3;
+        overflow: hidden;
+        word-break: break-word;
+        text-align: center;
+        align-self: center;
+    }
 
     .community-list-item:hover {
         cursor: pointer;
-        outline: 1px solid rgb(57, 221, 245);
+        box-shadow: 0 0 0 1px rgb(57, 221, 245);
     }
 
     .community-list-item.active {
-        outline: 2px solid rgb(57, 221, 245);
-        border: 2px solid black;
+        box-shadow: 0 0 0 1px rgb(57, 221, 245);
+        border: 1px solid black;
         transition: outline 0.3s ease;
         transition: border 0.3s ease;
     }
@@ -214,7 +229,7 @@
 
     .com-modal-nav div.active {
         cursor: pointer;
-        outline: 1px solid rgb(57, 221, 245);
+        box-shadow: 0 0 0 1px rgb(57, 221, 245);
         color: white;
         background-color: rgb(20, 20, 20);
     }

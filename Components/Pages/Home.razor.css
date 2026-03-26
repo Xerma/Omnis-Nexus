@@ -102,6 +102,7 @@
     flex-direction: row;
     padding: 0 15px 0 15px;
     transition: all 0.15s ease;
+    min-width: 0;
 }
 
     .com-listing:hover {
@@ -112,9 +113,15 @@
 
 .com-name {
     color: white;
+    flex: 1 1 auto;
+    min-width: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .com-count {
     margin-left: auto;
     color: grey;
+    flex: 0 0 auto;
 }

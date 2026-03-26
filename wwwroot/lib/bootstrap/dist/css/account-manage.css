@@ -85,6 +85,7 @@ html, body {
 
 .am-content p {
     color: rgb(206, 206, 206);
+    text-align: center;
 }
 
 .am-buttons {
@@ -144,4 +145,64 @@ html, body {
 
     .alert-warning p {
         color: rgb(212, 44, 44);
+    }
+
+.form-floating > .form-control {
+    background-color: rgb(25, 25, 25);
+    color: rgb(206, 206, 206);
+    border: solid 1px rgb(56, 56, 56);
+    box-shadow: none;
+}
+
+    .form-floating > .form-control:focus {
+        background-color: rgb(25, 25, 25);
+        color: rgb(206, 206, 206);
+        border: solid 1px rgb(65, 65, 65);
+        box-shadow: none;
+    }
+
+    .form-floating > .form-control::placeholder {
+        color: transparent;
+    }
+
+.form-floating > label {
+    color: rgba(206, 206, 206, 0.7);
+}
+
+.form-floating > .form-control:focus ~ label,
+.form-floating > .form-control:not(:placeholder-shown) ~ label {
+    color: rgba(206, 206, 206, 0.7);
+}
+
+.form-floating > label::after {
+    background-color: rgb(25, 25, 25) !important;
+}
+
+.form-control:-webkit-autofill,
+.form-control:-webkit-autofill:hover,
+.form-control:-webkit-autofill:focus,
+.form-control:-webkit-autofill:active {
+    -webkit-text-fill-color: rgb(206, 206, 206) !important;
+    caret-color: rgb(206, 206, 206);
+    -webkit-box-shadow: 0 0 0 1000px rgb(25, 25, 25) inset !important;
+    box-shadow: 0 0 0 1000px rgb(25, 25, 25) inset !important;
+    transition: background-color 9999s ease-in-out 0s;
+}
+
+.nav-item > .nav-link {
+    margin-bottom: 10px;
+    background-color: transparent;
+    color: white;
+    height: 35px;
+    display: flex;
+    align-items: center;
+    transition: 0.15s ease;
+}
+    .nav-item > .nav-link.active {
+        background-color: rgb(10, 10, 10);
+        box-shadow: 0 0 0 1px rgb(57, 221, 245);
+    }
+
+    .nav-item > .nav-link:hover {
+        background-color: rgb(10, 10, 10);
     }

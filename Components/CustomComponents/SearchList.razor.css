@@ -1,4 +1,8 @@
 ﻿
+.search-content {
+    width: 100%;
+}
+
 .search-content h5 {
     color: white;
     text-align: center;
@@ -8,6 +12,10 @@
 .search-header {
     color: white;
     font-size: 15px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: block;
+    white-space: nowrap;
 }
 
 .message {

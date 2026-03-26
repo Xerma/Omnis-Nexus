@@ -49,7 +49,7 @@ namespace OmnisNexus.Services
             return Channels.FirstOrDefault(c => c.Id == channelId);
         }
 
-        public async Task UpdateChannelNameAsync(Guid channelId, string newName)
+        public void UpdateChannelNameAsync(Guid channelId, string newName)
         {
             var channel = GetChannel(channelId);
             if (channel is null) return;

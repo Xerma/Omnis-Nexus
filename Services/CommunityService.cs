@@ -4,13 +4,15 @@ using OmnisNexus.Models;
 
 namespace OmnisNexus.Services
 {
-    public class CommunityListService
+    public class CommunityService
     {
         private IDbContextFactory<ApplicationDbContext> _dbContextFactory;
+        private CommunityStateService _communityState;
 
-        public CommunityListService(IDbContextFactory<ApplicationDbContext> dbFactory)
+        public CommunityService(IDbContextFactory<ApplicationDbContext> dbFactory, CommunityStateService communityState)
         {
             _dbContextFactory = dbFactory;
+            _communityState = communityState;
         }
 
         public async Task<bool> UpdateMemberRoleAsync(string userId, Guid communityId, string newRole)
@@ -39,6 +41,7 @@ namespace OmnisNexus.Services
             {
                 c.Name = newComName.Trim();
                 await db.SaveChangesAsync();
+                _communityState.UpdateCommunityName(c.Id, newComName.Trim());
             }
         }
 
@@ -50,6 +53,7 @@ namespace OmnisNexus.Services
 
             db.Communities.Remove(dbCom);
             await db.SaveChangesAsync();
+            _communityState.RemoveCommunity(community);
 
             if (community.Id == activeComId) return "";
             return null;
@@ -66,12 +70,11 @@ namespace OmnisNexus.Services
 
             if (membership == null) return null;
 
-            if (community != null)
-            {
-                db.Memberships.Remove(membership);
-                await db.SaveChangesAsync();
-                if (community.Id == activeComId) return "";
-            }
+            db.Memberships.Remove(membership);
+            await db.SaveChangesAsync();
+            _communityState.DecrementMemberCount(community.Id);
+            if (community.Id == activeComId) return "";
+
             return null;
         }
 
@@ -116,6 +119,7 @@ namespace OmnisNexus.Services
             db.Communities.Add(community);
             db.Memberships.Add(membership);
             await db.SaveChangesAsync();
+            _communityState.AddCommunityToAllCommunities(community);
 
             Channel channel = new()
             {
@@ -130,6 +134,34 @@ namespace OmnisNexus.Services
             guidArray[0] = community.Id;
             guidArray[1] = channel.Id;
             return guidArray;
+        }
+
+        public async Task<string?> JoinOrNavCommunity(Guid communityId, string? userId)
+        {
+            using var db = await _dbContextFactory.CreateDbContextAsync();
+
+            Membership? membership = await db.Memberships.FirstOrDefaultAsync(m => m.UserId == userId && m.CommunityId == communityId);
+
+            if (membership == null)
+            {
+                Community? community = await db.Communities.FirstOrDefaultAsync(c => c.Id == communityId);
+
+                if (userId == null || community == null) return null;
+
+                Membership m = new()
+                {
+                    UserId = userId,
+                    Community = community,
+                    Role = Roles.Member,
+                    JoinedAt = DateTime.UtcNow
+                };
+
+                await db.Memberships.AddAsync(m);
+                await db.SaveChangesAsync();
+                _communityState.IncrementMemberCount(communityId);
+                return communityId.ToString();
+            }
+            return communityId.ToString();
         }
     }
 }

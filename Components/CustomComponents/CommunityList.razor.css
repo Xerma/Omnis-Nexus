@@ -2,7 +2,7 @@
 .community-list-item {
     background-color: rgb(37, 37, 37);
     text-align: center;
-    font-size: 10px;
+    font-size: 9px;
     color: white;
     height: 60px;
     width: 60px;
@@ -73,6 +73,7 @@
     font-size: 15px;
     border-radius: 3px;
     padding: 5px;
+    transition: 0.15s ease;
 }
 
     .menu-edit-btn:hover {
@@ -142,13 +143,13 @@
         text-align: center;
         align-content: center;
         height: 40px;
-        font-weight: 550;
         color: white;
     }
 
 .modal-del-btn {
     margin-left: 10px;
     background-color: rgb(212, 44, 44);
+    transition: 0.15s ease;
 }
 
     .modal-del-btn:hover {
@@ -161,6 +162,7 @@
     background-color: rgb(25, 25, 25);
     border: solid 1px rgb(65, 65, 65);
     margin-right: 10px;
+    transition: 0.15s ease;
 }
 
     .modal-can-btn:hover {
@@ -170,14 +172,14 @@
     }
 
 .modal-save-btn {
-    background-color: rgb(25, 25, 25);
-    border: solid 1px rgb(65, 65, 65);
+    background-color: #1b6ec2;
+    transition: 0.15s ease;
 }
 
     .modal-save-btn:hover {
         cursor: pointer;
         color: white;
-        background-color: rgb(35, 35, 35);
+        background-color: rgb(47, 136, 198);
     }
 
 .channel-name-input {
@@ -214,12 +216,13 @@
     background-color: black;
 }
 
-.com-modal-nav div {
-    font-size: 15px;
-    padding: 3px 0;
-    margin-bottom: 5px;
-    border-radius: 5px;
-}
+    .com-modal-nav div {
+        font-size: 15px;
+        padding: 3px 0;
+        margin-bottom: 5px;
+        border-radius: 5px;
+        transition: 0.15s ease;
+    }
 
     .com-modal-nav div:hover {
         cursor: pointer;

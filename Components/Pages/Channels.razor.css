@@ -249,6 +249,7 @@
     column-gap: 5px;
     border-radius: 5px;
     position: relative;
+    transition: 0.05s ease;
 }
 
 .message:hover {
@@ -368,6 +369,7 @@
     background-color: rgb(25, 25, 25);
     color: rgb(206, 206, 206);
     align-items: center;
+    transition: 0.05s ease;
 }
 
 .message:hover .message-menu {
@@ -384,6 +386,7 @@
     text-align: center;
     align-content: center;
     align-items: center;
+    transition: 0.15s ease;
 }
 
     .message-edit:hover, .message-delete:hover {
@@ -446,6 +449,7 @@
 .del-modal-del-btn {
     margin-left: 10px;
     background-color: rgb(212, 44, 44);
+    transition: 0.15s ease;
 }
 
     .del-modal-del-btn:hover {
@@ -458,6 +462,7 @@
     background-color: rgb(25, 25, 25);
     border: solid 1px rgb(65, 65, 65);
     margin-right: 10px;
+    transition: 0.15s ease;
 }
     .del-modal-can-btn:hover {
         cursor: pointer;

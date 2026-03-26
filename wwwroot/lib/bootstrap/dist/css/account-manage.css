@@ -206,3 +206,16 @@ html, body {
     .nav-item > .nav-link:hover {
         background-color: rgb(10, 10, 10);
     }
+
+.btn-primary:hover {
+    color: white;
+    background-color: rgb(47, 136, 198);
+}
+
+.input-group-append > .text-success {
+    background-color: rgb(25, 25, 25);
+    border: solid 1px rgb(56, 56, 56);
+    border-left: none;
+    border-start-start-radius: 0;
+    border-end-start-radius: 0
+}

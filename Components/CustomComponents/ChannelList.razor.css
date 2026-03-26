@@ -61,6 +61,7 @@
     font-size: 15px;
     border-radius: 3px;
     padding: 5px;
+    transition: 0.15s ease;
 }
 
     .menu-edit-btn:hover {
@@ -132,6 +133,7 @@
 .modal-del-btn {
     margin-left: 10px;
     background-color: rgb(212, 44, 44);
+    transition: 0.15s ease;
 }
 
     .modal-del-btn:hover {
@@ -140,10 +142,11 @@
         color: white;
     }
 
-.modal-can-btn, .modal-new-btn {
+.modal-can-btn {
     background-color: rgb(25, 25, 25);
     border: solid 1px rgb(65, 65, 65);
     margin-right: 10px;
+    transition: 0.15s ease;
 }
 
     .modal-can-btn:hover {
@@ -152,21 +155,26 @@
         color: white;
     }
 
+.modal-new-btn {
+    background-color: #1b6ec2;
+    transition: 0.15s ease;
+}
+
     .modal-new-btn:hover {
         cursor: pointer;
         color: white;
-        background-color: rgb(69, 159, 76)
+        background-color: rgb(47, 136, 198);
     }
 
 .modal-save-btn {
-    background-color: rgb(25, 25, 25);
-    border: solid 1px rgb(65, 65, 65);
+    background-color: #1b6ec2;
+    transition: 0.15s ease;
 }
 
     .modal-save-btn:hover {
         cursor: pointer;
         color: white;
-        background-color: rgb(35, 35, 35);
+        background-color: rgb(47, 136, 198);
     }
 
 .channel-name-input {

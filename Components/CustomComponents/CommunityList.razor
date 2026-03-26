@@ -1,4 +1,5 @@
-﻿@inject IDbContextFactory<ApplicationDbContext> DbFactory
+﻿@using OmnisNexus.Components.Account.Pages.Manage
+@inject IDbContextFactory<ApplicationDbContext> DbFactory
 @inject AuthenticationStateProvider AuthStateProvider
 @inject NavigationManager Nav
 @inject CommunityStateService CommunityState
@@ -15,7 +16,7 @@
         <a href="@($"/channels/{community.Id}")"
                class="community-list-item @(community.Id == ActiveCommunityId ? "active" : "")"
                @oncontextmenu:preventDefault="true" @oncontextmenu="(e) => OpenCommunityMenu(e, community)">
-            @community.Name
+                <span>@community.Name</span>
         </a>
     }
     </div>
@@ -261,6 +262,7 @@
         try
         {
             await ComListService.SaveCommunityEditsAsync(communityForMenu, newComName);
+            CommunityState.UpdateCommunityName(communityForMenu.Id, newComName);
             await CommunityState.LoadUserCommunitiesAsync(AuthStateProvider);
             newComName = "";
         }

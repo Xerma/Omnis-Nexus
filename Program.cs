@@ -22,7 +22,7 @@ builder.Services.AddScoped<CommunitySearchService>();
 builder.Services.AddScoped<MemberReportService>();
 builder.Services.AddScoped<ChannelListService>();
 builder.Services.AddScoped<ErrorService>();
-builder.Services.AddScoped<CommunityListService>();
+builder.Services.AddScoped<CommunityService>();
 builder.Services.AddScoped<MessagingService>();
 builder.Services.AddScoped<MessageStateService>();
 builder.Services.AddScoped<HomeService>();

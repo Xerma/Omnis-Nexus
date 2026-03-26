@@ -1,7 +1,6 @@
 ﻿
 .channel-list-outer {
     width: 350px;
-    padding-right: 2px;
     background-color: black;
     border-left: solid 1px rgb(65, 65, 65);
     display: flex;
@@ -155,7 +154,7 @@
 }
 
 .channel-input {
-    padding: 0 10px 10px 10px;
+    padding: 0 7px 10px 7px;
     display: flex;
     align-items: flex-end;
     flex: 0 0 auto;

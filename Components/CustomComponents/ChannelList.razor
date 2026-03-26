@@ -142,6 +142,7 @@
     {
         if (e.Key == "Enter")
         {
+            if (string.IsNullOrWhiteSpace(createChannelName)) return;
             await CreateChannel();
         }
         else if (e.Key == "Escape")

@@ -40,7 +40,7 @@
         <div class="channel-modal" @onmousedown:stopPropagation="true">
             <h5>Edit Channel</h5>
             <p>Channel name</p>
-            <input type="text" class="channel-name-input" @bind="@newChannelName" />
+            <input type="text" class="channel-name-input" @bind:event="oninput" @bind="@newChannelName" @onkeydown="HandleEditChannelKeys"/>
             <div class="modal-btns">
                 <span class="modal-can-btn" @onclick="CloseEditChannelModal">Cancel</span>
                 <span class="modal-save-btn" @onclick="SaveChannelEdits">Save</span>
@@ -69,10 +69,10 @@
         <div class="channel-modal" @onmousedown:stopPropagation="true">
             <h5>Create Channel</h5>
             <p>Channel name</p>
-            <input type="text" class="channel-name-input" @bind="@createChannelName" />
+            <input type="text" class="channel-name-input" @bind:event="oninput" @bind="@createChannelName" @onkeydown="HandleNewChannelKeys"/>
             <div class="modal-btns">
                 <span class="modal-can-btn" @onclick="CloseNewChannelModal">Cancel</span>
-                <span class="modal-del-btn" @onclick="CreateChannel">Create</span>
+                <span class="modal-new-btn" @onclick="CreateChannel">Create</span>
             </div>
         </div>
     </div>
@@ -137,6 +137,30 @@
         CloseNewChannelModal();
     }
 
+    private async Task HandleNewChannelKeys(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter")
+        {
+            await CreateChannel();
+        }
+        else if (e.Key == "Escape")
+        {
+            CloseNewChannelModal();
+        }
+    }
+
+    private async Task HandleEditChannelKeys(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter")
+        {
+            await SaveChannelEdits();
+        }
+        else if (e.Key == "Escape")
+        {
+            CloseEditChannelModal();
+        }
+    }
+
     private async Task SaveChannelEdits()
     {
         try
@@ -155,11 +179,19 @@
 
     private async Task DeleteChannel()
     {
+        int channelCount = await ChanService.GetChannelCount(CommunityId);
+        if (channelCount == 1)
+        {
+            CloseDeleteChannelModal();
+            _ = ErrorService.ShowErrorAsync("Cannot delete the last channel.");
+            return;
+        }
+
         try
         {
             Guid? navTo = await ChanService.DeleteChannelAsync(channelForMenu, ActiveChannelId, CommunityId);
             await ChanState.LoadChannelsAsync(AuthStateProvider, CommunityId);
-            if (navTo.HasValue)
+            if (navTo != Guid.Empty)
             {
                 Nav.NavigateTo($"/channels/{navTo}");
             }
@@ -189,6 +221,7 @@
     private void CloseEditChannelModal()
     {
         showEditChannelModal = false;
+        newChannelName = "";
     }
 
     private void CloseDeleteChannelModal()
@@ -208,6 +241,7 @@
 
     private void OpenEditChannelModal()
     {
+        newChannelName = channelForMenu.Name;
         CloseDeleteChannelModal();
         CloseChannelMenu();
         showEditChannelModal = true;

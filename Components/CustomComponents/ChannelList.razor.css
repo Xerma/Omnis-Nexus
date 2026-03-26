@@ -138,7 +138,7 @@
         color: white;
     }
 
-.modal-can-btn {
+.modal-can-btn, .modal-new-btn {
     background-color: rgb(25, 25, 25);
     border: solid 1px rgb(65, 65, 65);
     margin-right: 10px;
@@ -148,6 +148,12 @@
         cursor: pointer;
         background-color: rgb(35, 35, 35);
         color: white;
+    }
+
+    .modal-new-btn:hover {
+        cursor: pointer;
+        color: white;
+        background-color: rgb(69, 159, 76)
     }
 
 .modal-save-btn {

@@ -81,10 +81,14 @@ namespace OmnisNexus.Services
 
         public void UpdateCommunityName(Guid comId, string newName)
         {
-            var community = AllCommunities.FirstOrDefault(c => c.Id == comId);
-            if (community is null) return;
+            var allCommunity = AllCommunities.FirstOrDefault(c => c.Id == comId);
+            if (allCommunity is null) return;
 
-            community.Name = newName;
+            var userCommunity = UserCommunities.FirstOrDefault(c => c.Id == comId);
+            if (userCommunity is null) return;
+
+            allCommunity.Name = newName;
+            userCommunity.Name = newName;
             NotifyStateChanged();
         }
 
@@ -104,6 +108,11 @@ namespace OmnisNexus.Services
 
             community.MemberCount--;
             NotifyStateChanged();
+        }
+
+        public Community? GetCommunity(Guid communityId)
+        {
+            return UserCommunities.FirstOrDefault(c => c.Id == communityId);
         }
     }
 }

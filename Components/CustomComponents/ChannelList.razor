@@ -165,7 +165,12 @@
     {
         try
         {
-            await ChanService.SaveChannelEditsAsync(channelForMenu, newChannelName);
+            if (channelForMenu is not null)
+            {
+                await ChanService.SaveChannelEditsAsync(channelForMenu, newChannelName);
+                await ChanState.UpdateChannelNameAsync(channelForMenu.Id, newChannelName);
+            }
+
             await ChanState.LoadChannelsAsync(AuthStateProvider, CommunityId);
         }
         catch (Exception e)

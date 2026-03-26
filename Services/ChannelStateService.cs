@@ -43,5 +43,19 @@ namespace OmnisNexus.Services
 
             SetChannels(channels);
         }
+
+        public Channel? GetChannel(Guid channelId)
+        {
+            return Channels.FirstOrDefault(c => c.Id == channelId);
+        }
+
+        public async Task UpdateChannelNameAsync(Guid channelId, string newName)
+        {
+            var channel = GetChannel(channelId);
+            if (channel is null) return;
+
+            channel.Name = newName;
+            NotifyStateChanged();
+        }
     }
 }

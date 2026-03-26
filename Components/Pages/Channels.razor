@@ -8,6 +8,7 @@
 @inject MessagingService MessageService
 @inject ErrorService ErrorService
 @inject MessageStateService MessageState
+@inject ChannelStateService ChannelState
 
 
 <PageTitle>@pageTitle</PageTitle>
@@ -22,7 +23,7 @@
             }
             else
             {
-                <div>Community not found!</div>
+                <div>Community not found</div>
             }
         </div>
 
@@ -232,9 +233,15 @@
         community = await db.Communities.FirstOrDefaultAsync(c =>
             c.Id == CommunityId);
 
-        channel = await db.Channels.FirstOrDefaultAsync(c => 
-            c.Id == CurrentChannelId && 
+        await ChannelState.LoadChannelsAsync(AuthStateProvider, CommunityId);
+
+        channel = ChannelState.GetChannel(CommunityId);
+        if (channel is null)
+        {
+            channel = await db.Channels.FirstOrDefaultAsync(c =>
+            c.Id == CurrentChannelId &&
             c.CommunityId == CommunityId);
+        }
 
         await MessageState.LoadMessagesAsync(CurrentChannelId);
 
@@ -371,6 +378,22 @@
             Console.WriteLine($"Error deleting message: {e.Message}");
             return;
         }
+    }
+
+    protected override void OnInitialized()
+    {
+        ChannelState.OnChange += HandleChannelStateChanged;
+    }
+
+    private void HandleChannelStateChanged()
+    {
+        channel = ChannelState.GetChannel(CurrentChannelId);
+        InvokeAsync(StateHasChanged);
+    }
+
+    public void Dispose()
+    {
+        ChannelState.OnChange -= HandleChannelStateChanged;
     }
 
 }

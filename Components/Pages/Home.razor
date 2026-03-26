@@ -7,6 +7,7 @@
 @inject CommunityStateService CommunityState
 @inject HomeService HomeService
 @inject ErrorService ErrorService
+@inject CommunityService CommunityService
 
 
 <PageTitle>Home</PageTitle>
@@ -39,15 +40,12 @@
             <span>Communities</span>
         </div>
         <div class="all-coms">
-            @if (allCommunities != null)
+            @foreach (var community in CommunityState.AllCommunities)
             {
-                @foreach (var community in allCommunities!)
-                {
-                    <div @onclick="() => JoinOrNavCommunity(community.Id)" class="com-listing">
-                        <span class="com-name">@community.Name</span>
-                        <span class="com-count">@community.MemberCount</span>
-                    </div>
-                }
+                <div @onclick="() => JoinOrNavCommunity(community.Id)" class="com-listing">
+                    <span class="com-name">@community.Name</span>
+                    <span class="com-count">@community.MemberCount</span>
+                </div>
             }
         </div>
     </div>
@@ -56,7 +54,6 @@
 
 @code {
 
-    private List<CommunityListItem>? allCommunities;
     private string? userId = "";
     ClaimsPrincipal? cp;
 
@@ -68,13 +65,6 @@
     private int comsOwnedInt;
     private int messagesEditedInt;
 
-
-    protected override void OnInitialized()
-    {
-        currentUrl = Nav.ToBaseRelativePath(Nav.Uri);
-        Nav.LocationChanged += OnLocationChanged;
-    }
-
     private void OnLocationChanged(object? sender, LocationChangedEventArgs e)
     {
         currentUrl = Nav.ToBaseRelativePath(e.Location);
@@ -83,12 +73,20 @@
 
     public void Dispose()
     {
+        CommunityState.OnChange -= HandleChange;
         Nav.LocationChanged -= OnLocationChanged;
+    }
+
+    private void HandleChange()
+    {
+        InvokeAsync(StateHasChanged);
     }
 
     protected override async Task OnInitializedAsync()
     {
-        using var db = await DbFactory.CreateDbContextAsync();
+        currentUrl = Nav.ToBaseRelativePath(Nav.Uri);
+        Nav.LocationChanged += OnLocationChanged;
+        CommunityState.OnChange += HandleChange;
 
         var authState = await AuthStateProvider.GetAuthenticationStateAsync();
         cp = authState.User;
@@ -100,7 +98,7 @@
 
         try
         {
-            allCommunities = await HomeService.GetAllCommunitiesAsync();
+            await CommunityState.LoadAllCommunitiesAsync();
         }
         catch (Exception e)
         {
@@ -129,9 +127,11 @@
     {
         try
         {
-            string? navTo = await HomeService.JoinOrNavCommunity(communityId, userId);
+            string? navTo = await CommunityService.JoinOrNavCommunity(communityId, userId);
+            if (string.IsNullOrWhiteSpace(navTo)) return;
+
             await CommunityState.LoadUserCommunitiesAsync(AuthStateProvider);
-            Nav.NavigateTo($"/channels/{communityId}");
+            Nav.NavigateTo($"/channels/{navTo}");
         }
         catch (Exception e)
         {

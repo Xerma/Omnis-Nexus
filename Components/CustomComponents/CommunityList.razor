@@ -233,6 +233,12 @@
     {
         try
         {
+            if (user is null)
+            {
+                await ErrorService.ShowErrorAsync("User not laoded.");
+                return;
+            }
+
             Guid[] newCommunityIds = await ComListService.CreateCommunityAsync(user);
             await CommunityState.LoadUserCommunitiesAsync(AuthStateProvider);
             Nav.NavigateTo($"/channels/{newCommunityIds[0]}/{newCommunityIds[1]}");

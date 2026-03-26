@@ -4,7 +4,7 @@
 @inject CommunityStateService CommunityState
 @inject IPermissionService PermService
 @inject MemberReportService MemRepService
-@inject CommunityListService ComListService
+@inject CommunityService ComListService
 @inject ErrorService ErrorService
 
 @if (CommunityState.UserCommunities.Any())
@@ -67,7 +67,7 @@
                         @if (showModalOverview)
                         {
                             <p>Community name</p>
-                            <input type="text" class="community-name-input" @bind="@newComName" />
+                            <input type="text" class="community-name-input" @bind:event="oninput" @bind="@newComName" @onkeydown="HandleEditKeys"/>
                             <div class="modal-btns">
                                 <span class="modal-can-btn" @onclick="CloseEditCommunityModal">Cancel</span>
                                 <span class="modal-save-btn" @onclick="SaveCommunityEdits">Save</span>
@@ -244,6 +244,18 @@
         }
     }
 
+    private async Task HandleEditKeys(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter")
+        {
+            await SaveCommunityEdits();
+        }
+        else if (e.Key == "Escape")
+        {
+            CloseEditCommunityModal();
+        }
+    }
+
     private async Task SaveCommunityEdits()
     {
         try
@@ -252,10 +264,10 @@
             await CommunityState.LoadUserCommunitiesAsync(AuthStateProvider);
             newComName = "";
         }
-        catch (Exception e)
+        catch (Exception ex)
         {
             await ErrorService.ShowErrorAsync("Error saving community edits.");
-            Console.WriteLine($"Error saving community edits: {e.Message}");
+            Console.WriteLine($"Error saving community edits: {ex.Message}");
             return;
         }
         CloseEditCommunityModal();
@@ -323,6 +335,7 @@
     {
         showEditCommunityModal = false;
         memberReportItems.Clear();
+        newComName = "";
     }
 
     private void CloseDeleteCommunityModal()
@@ -332,6 +345,7 @@
 
     private void OpenEditCommunityModal()
     {
+        newComName = communityForMenu.Name;
         CloseDeleteCommunityModal();
         CloseCommunityMenu();
         showEditCommunityModal = true;

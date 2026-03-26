@@ -54,22 +54,29 @@ namespace OmnisNexus.Services
             }
         }
 
-        public async Task<Guid> DeleteChannelAsync(Channel target, Guid currChanId, Guid comId)
+        public async Task<int> GetChannelCount(Guid comId)
         {
             using var db = _dbContextFactory.CreateDbContext();
+            return await db.Channels
+                .Where(c => c.CommunityId == comId)
+                .CountAsync();
+        }
 
-            if (target == null) return Guid.Empty;
+        public async Task<Guid> DeleteChannelAsync(Channel? target, Guid currChanId, Guid comId)
+        {
+            using var db = _dbContextFactory.CreateDbContext();
+            Channel? channel = await db.Channels.FindAsync(target?.Id);
 
-            if (target != null)
+            if (channel == null) return Guid.Empty;
+
+            db.Channels.Remove(channel);
+            await db.SaveChangesAsync();
+
+            if (channel.Id == currChanId)
             {
-                db.Channels.Remove(target);
-                await db.SaveChangesAsync();
-
-                if (target.Id == currChanId)
-                {
-                    return comId;
-                }
+                return comId;
             }
+
             return Guid.Empty;
         }
 
@@ -90,7 +97,7 @@ namespace OmnisNexus.Services
 
         private bool IsChannelNameValid(string name)
         {
-            return name.Length <= 50 && !string.IsNullOrWhiteSpace(name);
+            return !string.IsNullOrWhiteSpace(name) && name.Length <= 50;
         }
 
     }

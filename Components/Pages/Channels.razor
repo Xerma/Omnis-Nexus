@@ -9,6 +9,7 @@
 @inject ErrorService ErrorService
 @inject MessageStateService MessageState
 @inject ChannelStateService ChannelState
+@inject CommunityStateService CommunityState
 
 
 <PageTitle>@pageTitle</PageTitle>
@@ -45,7 +46,7 @@
                 <input class="search-input" type="text" placeholder="Search" @bind="@searchText" @bind:event="oninput" @onkeydown="HandleSearch" />
                 @if (!string.IsNullOrWhiteSpace(searchText))
                 {
-                    <button class="clear-search-btn" @onclick="ClearSearch">x</button>
+                    <button class="clear-search-btn" @onclick="HardClearSearch">x</button>
                 }
             </div>
         </div>
@@ -143,7 +144,9 @@
         
         @if (showSearchContent)
         {
-            <div class="search-list">
+            <div class="search-backdrop" @onmousedown="LightClearSearch"></div>
+
+            <div class="search-list" @onmousedown:stopPropagation="true">
                 <SearchList CommunityId="CommunityId" searchTerm="@searchText" />
             </div>
         }
@@ -230,12 +233,16 @@
             }
         }
 
-        community = await db.Communities.FirstOrDefaultAsync(c =>
+        await CommunityState.LoadUserCommunitiesAsync(AuthStateProvider);
+        community = CommunityState.GetCommunity(CommunityId);
+        if (community is null)
+        {
+            community = await db.Communities.FirstOrDefaultAsync(c =>
             c.Id == CommunityId);
+        }
 
         await ChannelState.LoadChannelsAsync(AuthStateProvider, CommunityId);
-
-        channel = ChannelState.GetChannel(CommunityId);
+        channel = ChannelState.GetChannel(CurrentChannelId);
         if (channel is null)
         {
             channel = await db.Channels.FirstOrDefaultAsync(c =>
@@ -269,7 +276,13 @@
         }
     }
 
-    private void ClearSearch()
+    private void LightClearSearch()
+    {
+        showMemberList = true;
+        showSearchContent = false;
+    }
+
+    private void HardClearSearch()
     {
         searchText = "";
         showMemberList = true;
@@ -383,6 +396,7 @@
     protected override void OnInitialized()
     {
         ChannelState.OnChange += HandleChannelStateChanged;
+        CommunityState.OnChange += HandleCommunityStateChanged;
     }
 
     private void HandleChannelStateChanged()
@@ -391,9 +405,16 @@
         InvokeAsync(StateHasChanged);
     }
 
+    private void HandleCommunityStateChanged()
+    {
+        community = CommunityState.GetCommunity(CommunityId);
+        InvokeAsync(StateHasChanged);
+    }
+
     public void Dispose()
     {
         ChannelState.OnChange -= HandleChannelStateChanged;
+        CommunityState.OnChange -= HandleCommunityStateChanged;
     }
 
 }

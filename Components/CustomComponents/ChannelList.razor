@@ -98,8 +98,8 @@
     private double channelMenuY;
     private Channel? channelForMenu;
 
-    private string newChannelName;
-    private string createChannelName;
+    private string newChannelName = "";
+    private string createChannelName = "";
 
     protected override async Task OnParametersSetAsync()
     {
@@ -127,6 +127,7 @@
             var channelId = await ChannelService.CreateChannelAsync(createChannelName, CommunityId);
             await ChannelState.LoadChannelsAsync(AuthStateProvider, CommunityId);
             Nav.NavigateTo($"/channels/{CommunityId}/{channelId}");
+            createChannelName = "";
         }
         catch (Exception e)
         {
@@ -168,7 +169,7 @@
             if (channelForMenu is not null)
             {
                 await ChannelService.SaveChannelEditsAsync(channelForMenu, newChannelName);
-                await ChannelState.UpdateChannelNameAsync(channelForMenu.Id, newChannelName);
+                ChannelState.UpdateChannelNameAsync(channelForMenu.Id, newChannelName);
             }
 
             await ChannelState.LoadChannelsAsync(AuthStateProvider, CommunityId);
@@ -242,6 +243,7 @@
     private void CloseNewChannelModal()
     {
         showNewChannelModal = false;
+        createChannelName = "";
     }
 
     private void OpenEditChannelModal()

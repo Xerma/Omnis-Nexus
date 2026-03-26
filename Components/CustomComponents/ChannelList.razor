@@ -2,14 +2,14 @@
 @inject NavigationManager Nav
 @inject IPermissionService PermService
 @inject AuthenticationStateProvider AuthStateProvider
-@inject ChannelListService ChanService
-@inject ChannelStateService ChanState
+@inject ChannelListService ChannelService
+@inject ChannelStateService ChannelState
 @inject ErrorService ErrorService
 
-@if (ChanState.Channels.Any())
+@if (ChannelState.Channels.Any())
 {
     <div class="channel-list-container">
-        @foreach (var channel in ChanState.Channels)
+        @foreach (var channel in ChannelState.Channels)
         {
             <a href="@($"/channels/{CommunityId}/{channel.Id}")" class="channel-list-item @(channel.Id == ActiveChannelId ? "active" : "")"
             @oncontextmenu:preventDefault="true" @oncontextmenu="(e) => OpenChannelMenu(e, channel)">
@@ -113,7 +113,7 @@
             userId = cp.FindFirst(ClaimTypes.NameIdentifier)?.Value;
         }
 
-        await ChanState.LoadChannelsAsync(AuthStateProvider, CommunityId);
+        await ChannelState.LoadChannelsAsync(AuthStateProvider, CommunityId);
 
         currMembership = await db.Memberships.FirstOrDefaultAsync(m =>
             m.UserId == userId &&
@@ -124,8 +124,8 @@
     {
         try
         {
-            var channelId = await ChanService.CreateChannelAsync(createChannelName, CommunityId);
-            await ChanState.LoadChannelsAsync(AuthStateProvider, CommunityId);
+            var channelId = await ChannelService.CreateChannelAsync(createChannelName, CommunityId);
+            await ChannelState.LoadChannelsAsync(AuthStateProvider, CommunityId);
             Nav.NavigateTo($"/channels/{CommunityId}/{channelId}");
         }
         catch (Exception e)
@@ -167,11 +167,11 @@
         {
             if (channelForMenu is not null)
             {
-                await ChanService.SaveChannelEditsAsync(channelForMenu, newChannelName);
-                await ChanState.UpdateChannelNameAsync(channelForMenu.Id, newChannelName);
+                await ChannelService.SaveChannelEditsAsync(channelForMenu, newChannelName);
+                await ChannelState.UpdateChannelNameAsync(channelForMenu.Id, newChannelName);
             }
 
-            await ChanState.LoadChannelsAsync(AuthStateProvider, CommunityId);
+            await ChannelState.LoadChannelsAsync(AuthStateProvider, CommunityId);
         }
         catch (Exception e)
         {
@@ -184,7 +184,7 @@
 
     private async Task DeleteChannel()
     {
-        int channelCount = await ChanService.GetChannelCount(CommunityId);
+        int channelCount = await ChannelService.GetChannelCount(CommunityId);
         if (channelCount == 1)
         {
             CloseDeleteChannelModal();
@@ -194,8 +194,8 @@
 
         try
         {
-            Guid? navTo = await ChanService.DeleteChannelAsync(channelForMenu, ActiveChannelId, CommunityId);
-            await ChanState.LoadChannelsAsync(AuthStateProvider, CommunityId);
+            Guid? navTo = await ChannelService.DeleteChannelAsync(channelForMenu, ActiveChannelId, CommunityId);
+            await ChannelState.LoadChannelsAsync(AuthStateProvider, CommunityId);
             if (navTo != Guid.Empty)
             {
                 Nav.NavigateTo($"/channels/{navTo}");
@@ -262,19 +262,19 @@
     protected override void OnInitialized()
     {
         string relativePath = Nav.ToBaseRelativePath(Nav.Uri);
-        ActiveChannelId = ChanService.SetActiveChannelFromUrl(relativePath);
+        ActiveChannelId = ChannelService.SetActiveChannelFromUrl(relativePath);
         Nav.LocationChanged += OnLocationChanged;
     }
 
     protected override async Task OnInitializedAsync()
     {
-        ChanState.OnChange += StateHasChanged;
+        ChannelState.OnChange += StateHasChanged;
     }
 
     private void OnLocationChanged(object? sender, Microsoft.AspNetCore.Components.Routing.LocationChangedEventArgs e)
     {
         string relativePath = Nav.ToBaseRelativePath(Nav.Uri);
-        ActiveChannelId = ChanService.SetActiveChannelFromUrl(relativePath);
+        ActiveChannelId = ChannelService.SetActiveChannelFromUrl(relativePath);
         InvokeAsync(StateHasChanged);
         CloseChannelMenu();
     }
@@ -282,7 +282,7 @@
     public void Dispose()
     {
         Nav.LocationChanged -= OnLocationChanged;
-        ChanState.OnChange -= StateHasChanged;
+        ChannelState.OnChange -= StateHasChanged;
     }
 
 }

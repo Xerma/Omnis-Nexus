@@ -69,14 +69,14 @@
                                         @if (PermService.CanEditMessage(currMembership, message) || PermService.CanDeleteMessage(currMembership, message))
                                         {
                                             <div class="message-menu">
-                                                @if (PermService.CanEditMessage(currMembership!, message))
+                                                @if (PermService.CanEditMessage(currMembership, message))
                                                 {
                                                     <div class="message-edit"
                                                          @onclick="() => EditMessage(message)">
                                                         Edit
                                                     </div>
                                                 }
-                                                @if (PermService.CanDeleteMessage(currMembership!, message))
+                                                @if (PermService.CanDeleteMessage(currMembership, message))
                                                 {
                                                     <div class="message-delete"
                                                          @onclick="() => OpenDeleteModal(message.Id)">
@@ -140,24 +140,22 @@
                     </div>
                 }
             </div>
-        }
 
-        
+            @if (showMemberList)
+            {
+                <div class="member-list">
+                    <MemberList CommunityId="CommunityId" ChannelId="CurrentChannelId" />
+                </div>
+            }
 
-        @if (showMemberList)
-        {
-            <div class="member-list">
-                <MemberList CommunityId="CommunityId" ChannelId="CurrentChannelId" />
-            </div>
-        }
-        
-        @if (showSearchContent)
-        {
-            <div class="search-backdrop" @onmousedown="LightClearSearch"></div>
+            @if (showSearchContent)
+            {
+                <div class="search-backdrop" @onmousedown="LightClearSearch"></div>
 
-            <div class="search-list" @onmousedown:stopPropagation="true">
-                <SearchList CommunityId="CommunityId" searchTerm="@searchText" />
-            </div>
+                <div class="search-list" @onmousedown:stopPropagation="true">
+                    <SearchList CommunityId="CommunityId" searchTerm="@searchText" />
+                </div>
+            }
         }
     </div>
     

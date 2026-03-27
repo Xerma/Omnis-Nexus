@@ -12,4 +12,4 @@ deploy_railway:
     - railway --version
     - test -n "$RAILWAY_TOKEN" || (echo "RAILWAY_TOKEN is missing" && exit 1)
   script:
-    - railway up --ci
+    - railway up --ci --service "Omnis-Nexus"

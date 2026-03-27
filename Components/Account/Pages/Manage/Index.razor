@@ -1,13 +1,8 @@
 ﻿@page "/Account/Manage"
-@rendermode InteractiveServer
-
-@using System.ComponentModel.DataAnnotations
-@using System.Security.Claims
 
 @inject UserManager<ApplicationUser> UserManager
 @inject SignInManager<ApplicationUser> SignInManager
-@inject AuthenticationStateProvider AuthStateProvider
-@inject NavigationManager Nav
+@inject IdentityRedirectManager RedirectManager
 
 <PageTitle>Profile Settings</PageTitle>
 
@@ -18,41 +13,26 @@
 
     <div class="am-content">
         <div class="am-content-inner">
-            <EditForm Model="Input" OnValidSubmit="OnValidSubmitAsync">
+            <EditForm Model="Input" FormName="profile" OnValidSubmit="OnValidSubmitAsync" method="post">
                 <DataAnnotationsValidator />
                 <ValidationSummary class="text-danger" role="alert" />
-
-                @if (!string.IsNullOrWhiteSpace(statusMessage))
-                {
-                    <div class="text-success mb-3">@statusMessage</div>
-                }
-
-                @if (!string.IsNullOrWhiteSpace(errorMessage))
-                {
-                    <div class="text-danger mb-3">@errorMessage</div>
-                }
-
                 <div class="form-floating mb-3">
-                    <InputText @bind-Value="Input.Username"
-                               id="Input.Username"
-                               class="form-control"
-                               placeholder="Choose your username." />
+                    <InputText @bind-Value="Input.Username" id="Input.Username" class="form-control" placeholder="Choose your username." />
                     <label for="Input.Username" class="form-label">Username</label>
                     <ValidationMessage For="() => Input.Username" class="text-danger" />
                 </div>
-
                 <div class="form-floating mb-3">
-                    <InputText @bind-Value="Input.PhoneNumber"
-                               id="Input.PhoneNumber"
-                               class="form-control"
-                               placeholder="Enter your phone number" />
+                    <InputText @bind-Value="Input.PhoneNumber" id="Input.PhoneNumber" class="form-control" placeholder="Enter your phone number" />
                     <label for="Input.PhoneNumber" class="form-label">Phone number</label>
                     <ValidationMessage For="() => Input.PhoneNumber" class="text-danger" />
                 </div>
-
                 <button type="submit" class="w-100 btn btn-lg btn-primary">Save</button>
             </EditForm>
         </div>
+    </div>
+
+    <div class="am-status-message">
+        <StatusMessage />
     </div>
 </div>
 
@@ -61,50 +41,39 @@
     private string? username;
     private string? phoneNumber;
 
-    private InputModel Input { get; set; } = new();
-    private string? statusMessage;
-    private string? errorMessage;
+    [CascadingParameter]
+    private HttpContext HttpContext { get; set; } = default!;
+
+    [SupplyParameterFromForm]
+    private InputModel Input { get; set; } = default!;
 
     protected override async Task OnInitializedAsync()
     {
-        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
-        var principal = authState.User;
+        Input ??= new();
 
-        if (principal.Identity?.IsAuthenticated != true)
-        {
-            Nav.NavigateTo("/Account/Login", forceLoad: true);
-            return;
-        }
-
-        var userId = principal.FindFirstValue(ClaimTypes.NameIdentifier);
-        if (string.IsNullOrWhiteSpace(userId))
-        {
-            errorMessage = "Unable to load user.";
-            return;
-        }
-
-        user = await UserManager.FindByIdAsync(userId);
+        user = await UserManager.GetUserAsync(HttpContext.User);
         if (user is null)
         {
-            errorMessage = "Unable to load user.";
+            RedirectManager.RedirectToInvalidUser(UserManager, HttpContext);
             return;
         }
 
         username = await UserManager.GetUserNameAsync(user);
         phoneNumber = await UserManager.GetPhoneNumberAsync(user);
 
-        Input.PhoneNumber = phoneNumber;
-        Input.Username = username ?? "";
+        Input.PhoneNumber ??= phoneNumber;
+
+        if (string.IsNullOrWhiteSpace(Input.Username))
+        {
+            Input.Username = username!;
+        }
     }
 
     private async Task OnValidSubmitAsync()
     {
-        statusMessage = null;
-        errorMessage = null;
-
         if (user is null)
         {
-            errorMessage = "Unable to load user.";
+            RedirectManager.RedirectToInvalidUser(UserManager, HttpContext);
             return;
         }
 
@@ -113,7 +82,7 @@
             var setUsernameResult = await UserManager.SetUserNameAsync(user, Input.Username);
             if (!setUsernameResult.Succeeded)
             {
-                errorMessage = "Error: Failed to set username.";
+                RedirectManager.RedirectToCurrentPageWithStatus("Error: Failed to set username", HttpContext);
                 return;
             }
         }
@@ -123,24 +92,18 @@
             var setPhoneResult = await UserManager.SetPhoneNumberAsync(user, Input.PhoneNumber);
             if (!setPhoneResult.Succeeded)
             {
-                errorMessage = "Error: Failed to set phone number.";
+                RedirectManager.RedirectToCurrentPageWithStatus("Error: Failed to set phone number.", HttpContext);
                 return;
             }
         }
 
         await SignInManager.RefreshSignInAsync(user);
-
-        username = await UserManager.GetUserNameAsync(user);
-        phoneNumber = await UserManager.GetPhoneNumberAsync(user);
-
-        Input.Username = username ?? "";
-        Input.PhoneNumber = phoneNumber;
-
-        statusMessage = "Your profile has been updated.";
+        RedirectManager.RedirectToCurrentPageWithStatus("Your profile has been updated", HttpContext);
     }
 
     private sealed class InputModel
     {
+        //[Phone]
         [Display(Name = "Phone number")]
         public string? PhoneNumber { get; set; }
 

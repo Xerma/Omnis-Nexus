@@ -10,5 +10,6 @@ deploy_railway:
   before_script:
     - npm install -g @railway/cli
     - railway --version
+    - test -n "$RAILWAY_TOKEN" || (echo "RAILWAY_TOKEN is missing" && exit 1)
   script:
     - railway up --ci

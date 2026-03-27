@@ -241,7 +241,7 @@
 
             Guid[] newCommunityIds = await ComListService.CreateCommunityAsync(user);
             //await CommunityState.LoadUserCommunitiesAsync(AuthStateProvider);
-            Nav.NavigateTo($"/channels/{newCommunityIds[0]}/{newCommunityIds[1]}");
+            Nav.NavigateTo($"/channels/{newCommunityIds[0]}/{newCommunityIds[1]}", forceLoad: true);
         }
         catch (Exception e)
         {

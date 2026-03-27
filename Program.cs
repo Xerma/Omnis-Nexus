@@ -62,6 +62,9 @@ builder.Services.AddAuthorization(options =>
         .Build();
 });
 
+var port = Environment.GetEnvironmentVariable("PORT");
+if (!string.IsNullOrEmpty(port)) builder.WebHost.UseUrls($"http://0.0.0.0:{port}");
+
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.

@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Components.Authorization;
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using OmnisNexus.Components;
@@ -26,6 +27,8 @@ builder.Services.AddScoped<CommunityService>();
 builder.Services.AddScoped<MessagingService>();
 builder.Services.AddScoped<MessageStateService>();
 builder.Services.AddScoped<HomeService>();
+
+builder.Services.AddDataProtection().PersistKeysToFileSystem(new DirectoryInfo("/app/keys")).SetApplicationName("OmnisNexus");
 
 builder.Services.AddAuthentication(options =>
     {

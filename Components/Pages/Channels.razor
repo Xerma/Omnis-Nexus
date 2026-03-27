@@ -51,89 +51,98 @@
             </div>
         </div>
 
-        <div class="channel-content">
-            @if (channel != null)
-            {
-                <div class="channel-view">
-                    <div class="message-list-outer">
-                        <div class="message-list-inner">
-                            @foreach (Message message in MessageState.Messages)
-                            {
-                                <div class="message">
-                                    @if (PermService.CanEditMessage(currMembership!, message) || PermService.CanDeleteMessage(currMembership!, message))
-                                    {
-                                        <div class="message-menu">
-                                            @if (PermService.CanEditMessage(currMembership!, message))
+        @if (community == null || channel == null || currMembership == null)
+        {
+            <div>Loading...</div>
+        }
+        else
+        {
+            <div class="channel-content">
+                @if (channel != null)
+                {
+                    <div class="channel-view">
+                        <div class="message-list-outer">
+                            <div class="message-list-inner">
+                                @foreach (Message message in MessageState.Messages)
+                                {
+                                    <div class="message">
+                                        @if (PermService.CanEditMessage(currMembership, message) || PermService.CanDeleteMessage(currMembership, message))
+                                        {
+                                            <div class="message-menu">
+                                                @if (PermService.CanEditMessage(currMembership!, message))
+                                                {
+                                                    <div class="message-edit"
+                                                         @onclick="() => EditMessage(message)">
+                                                        Edit
+                                                    </div>
+                                                }
+                                                @if (PermService.CanDeleteMessage(currMembership!, message))
+                                                {
+                                                    <div class="message-delete"
+                                                         @onclick="() => OpenDeleteModal(message.Id)">
+                                                        Delete
+                                                    </div>
+                                                }
+                                            </div>
+                                        }
+
+                                        <div class="message-author-icon">
+                                        </div>
+                                        <div class="message-header">
+                                            <span class="message-author-name">@message.User</span>
+                                            @if (message.UpdatedAt == null)
                                             {
-                                                <div class="message-edit"
-                                                     @onclick="() => EditMessage(message)">
-                                                    Edit
-                                                </div>
+                                                <span class="message-timestamp">@message.CreatedAt</span>
                                             }
-                                            @if (PermService.CanDeleteMessage(currMembership!, message))
+                                            else
                                             {
-                                                <div class="message-delete"
-                                                     @onclick="() => OpenDeleteModal(message.Id)">
-                                                    Delete
-                                                </div>
+                                                <span class="message-timestamp">@message.UpdatedAt</span>
                                             }
                                         </div>
-                                    }
 
-                                    <div class="message-author-icon">
-                                    </div>
-                                    <div class="message-header">
-                                        <span class="message-author-name">@message.User</span>
-                                        @if (message.UpdatedAt == null)
+                                        @if (editingMessageId == message.Id)
                                         {
-                                            <span class="message-timestamp">@message.CreatedAt</span>
+                                            <div class="message-edit-area">
+                                                <textarea @ref="editTextArea"
+                                                          @bind="editedMessageText"
+                                                          @bind:event="oninput"
+                                                          @onkeydown="(KeyboardEventArgs e) => HandleEditKey(message.Id, e)"></textarea>
+                                                <div class="edit-actions">
+                                                    <span @onclick="CancelEdit">Cancel</span>
+                                                    <span class="message-edit-save"
+                                                          @onclick="() => SaveEdit(message.Id)">Save</span>
+                                                </div>
+                                            </div>
                                         }
                                         else
                                         {
-                                            <span class="message-timestamp">@message.UpdatedAt</span>
+                                            <div class="message-content">
+                                                @message.Content
+                                                @if (message.UpdatedAt != null)
+                                                {
+                                                    <span class="message-edited"> (edited)</span>
+                                                }
+                                            </div>
                                         }
                                     </div>
+                                }
+                            </div>
+                        </div>
 
-                                    @if (editingMessageId == message.Id)
-                                    {
-                                        <div class="message-edit-area">
-                                            <textarea @ref="editTextArea"
-                                                      @bind="editedMessageText"
-                                                      @bind:event="oninput"
-                                                      @onkeydown="(KeyboardEventArgs e) => HandleEditKey(message.Id, e)"></textarea>
-                                            <div class="edit-actions">
-                                                <span @onclick="CancelEdit">Cancel</span>
-                                                <span class="message-edit-save"
-                                                      @onclick="() => SaveEdit(message.Id)">Save</span>
-                                            </div>
-                                        </div>
-                                    }
-                                    else
-                                    {
-                                        <div class="message-content">
-                                            @message.Content
-                                            @if (message.UpdatedAt != null)
-                                            {
-                                                <span class="message-edited"> (edited)</span>
-                                            }
-                                        </div>
-                                    }
-                                </div>
-                            }
+                        <div class="channel-input">
+                            <textarea type="text"
+                                      @bind="@messageText"
+                                      @onkeydown="SendMessage"
+                                      @bind:event="oninput"
+                                      placeholder="Message @channel.Name"
+                                      spellcheck="true" />
                         </div>
                     </div>
+                }
+            </div>
+        }
 
-                    <div class="channel-input">
-                        <textarea type="text"
-                                  @bind="@messageText"
-                                  @onkeydown="SendMessage"
-                                  @bind:event="oninput"
-                                  placeholder="Message @channel.Name"
-                                  spellcheck="true" />
-                    </div>
-                </div>
-            }
-        </div>
+        
 
         @if (showMemberList)
         {

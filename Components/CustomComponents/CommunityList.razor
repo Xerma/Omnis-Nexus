@@ -7,6 +7,7 @@
 @inject MemberReportService MemRepService
 @inject CommunityService ComListService
 @inject ErrorService ErrorService
+@inject IJSRuntime JS
 
 @if (CommunityState.UserCommunities.Any())
 {
@@ -241,7 +242,8 @@
 
             Guid[] newCommunityIds = await ComListService.CreateCommunityAsync(user);
             //await CommunityState.LoadUserCommunitiesAsync(AuthStateProvider);
-            Nav.NavigateTo($"/channels/{newCommunityIds[0]}/{newCommunityIds[1]}", forceLoad: true);
+            //Nav.NavigateTo($"/channels/{newCommunityIds[0]}/{newCommunityIds[1]}", forceLoad: true);
+            await JS.InvokeVoidAsync("open", $"/channels/{newCommunityIds[0]}/{newCommunityIds[1]}", "_self");
         }
         catch (Exception e)
         {

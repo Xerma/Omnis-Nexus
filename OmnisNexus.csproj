@@ -23,5 +23,12 @@
   <ItemGroup>
     <Folder Include="Data\Migrations\" />
   </ItemGroup>
+  
+  <ItemGroup>
+    <Compile Remove="OmnisNexus.Tests\**\*.cs" />
+    <Content Remove="OmnisNexus.Tests\**" />
+    <EmbeddedResource Remove="OmnisNexus.Tests\**" />
+    <None Remove="OmnisNexus.Tests\**" />
+</ItemGroup>
 
 </Project>

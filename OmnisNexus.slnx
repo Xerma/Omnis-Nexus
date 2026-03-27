@@ -1,4 +1,4 @@
 <Solution>
-  <Project Path="../OmnisNexus.Tests/OmnisNexus.Tests.csproj" Id="808d305d-1756-43d8-a829-cf028dd59423" />
+  <Project Path="OmnisNexus.Tests/OmnisNexus.Tests.csproj" Id="808d305d-1756-43d8-a829-cf028dd59423" />
   <Project Path="OmnisNexus.csproj" />
 </Solution>

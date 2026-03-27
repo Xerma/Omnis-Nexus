@@ -16,7 +16,7 @@
     {
         <div href="@($"/channels/{community.Id}")"
                class="community-list-item @(community.Id == ActiveCommunityId ? "active" : "")"
-               @onclick="@(() => Nav.NavigateTo($"/channels/{community.Id}"))"
+               @onclick="@(() => Nav.NavigateTo($"/channels/{community.Id}", forceLoad: true))"
                @oncontextmenu:preventDefault="true" @oncontextmenu="(e) => OpenCommunityMenu(e, community)">
                 <span>@community.Name</span>
         </div>

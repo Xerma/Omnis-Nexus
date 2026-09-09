@@ -1,9 +1,11 @@
 using Microsoft.AspNetCore.Components.Authorization;
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using OmnisNexus.Components;
 using OmnisNexus.Components.Account;
 using OmnisNexus.Data;
+using OmnisNexus.Hubs;
 using OmnisNexus.Services;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -11,6 +13,7 @@ var builder = WebApplication.CreateBuilder(args);
 // Add services to the container.
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
+builder.Services.AddSignalR();
 
 builder.Services.AddCascadingAuthenticationState();
 builder.Services.AddScoped<IdentityRedirectManager>();
@@ -26,6 +29,9 @@ builder.Services.AddScoped<CommunityService>();
 builder.Services.AddScoped<MessagingService>();
 builder.Services.AddScoped<MessageStateService>();
 builder.Services.AddScoped<HomeService>();
+builder.Services.AddSingleton<MessageRealtimeService>();
+
+builder.Services.AddDataProtection().PersistKeysToFileSystem(new DirectoryInfo("/app/keys")).SetApplicationName("OmnisNexus");
 
 builder.Services.AddAuthentication(options =>
     {
@@ -59,6 +65,9 @@ builder.Services.AddAuthorization(options =>
         .Build();
 });
 
+var port = Environment.GetEnvironmentVariable("PORT");
+if (!string.IsNullOrEmpty(port)) builder.WebHost.UseUrls($"http://0.0.0.0:{port}");
+
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.
@@ -80,8 +89,16 @@ app.UseAntiforgery();
 app.MapStaticAssets().AllowAnonymous();
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();
+app.MapHub<MessageHub>("/hubs/messages");
 
 // Add additional endpoints required by the Identity /Account Razor components.
 app.MapAdditionalIdentityEndpoints();
+
+using (var scope = app.Services.CreateScope())
+{
+    var dbFactory = scope.ServiceProvider.GetRequiredService<IDbContextFactory<ApplicationDbContext>>();
+    using var db = dbFactory.CreateDbContext();
+    db.Database.Migrate();
+}
 
 app.Run();

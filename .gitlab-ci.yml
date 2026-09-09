@@ -1,0 +1,15 @@
+image: node:20
+
+stages:
+  - deploy
+
+deploy_railway:
+  stage: deploy
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "production"'
+  before_script:
+    - npm install -g @railway/cli
+    - railway --version
+    - test -n "$RAILWAY_TOKEN" || (echo "RAILWAY_TOKEN is missing" && exit 1)
+  script:
+    - railway up --ci --service "omnis-nexus"

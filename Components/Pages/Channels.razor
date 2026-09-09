@@ -1,15 +1,17 @@
 ﻿@page "/channels/{CommunityId:guid}"
 @page "/channels/{CommunityId:guid}/{CurrentChannelId:guid}"
+@implements IDisposable
 
 @inject IDbContextFactory<ApplicationDbContext> DbFactory
 @inject NavigationManager Nav
 @inject AuthenticationStateProvider AuthStateProvider
-@inject IPermissionService PermService
 @inject MessagingService MessageService
+@inject MessageRealtimeService MessageRealtime
 @inject ErrorService ErrorService
 @inject MessageStateService MessageState
 @inject ChannelStateService ChannelState
 @inject CommunityStateService CommunityState
+@inject IHubContext<MessageHub> MessageHubContext
 
 
 <PageTitle>@pageTitle</PageTitle>
@@ -51,104 +53,111 @@
             </div>
         </div>
 
-        <div class="channel-content">
-            @if (channel != null)
-            {
-                <div class="channel-view">
-                    <div class="message-list-outer">
-                        <div class="message-list-inner">
-                            @foreach (Message message in MessageState.Messages)
-                            {
-                                <div class="message">
-                                    @if (PermService.CanEditMessage(currMembership!, message) || PermService.CanDeleteMessage(currMembership!, message))
-                                    {
-                                        <div class="message-menu">
-                                            @if (PermService.CanEditMessage(currMembership!, message))
+        @if (community == null || channel == null || currMembership == null)
+        {
+            <div>Loading...</div>
+        }
+        else
+        {
+            <div class="channel-content">
+                @if (channel != null)
+                {
+                    <div class="channel-view">
+                        <div class="message-list-outer">
+                            <div class="message-list-inner">
+                                @foreach (MessageDto message in MessageState.Messages)
+                                {
+                                    <div class="message">
+                                        @if (CanEditMessage(message) || CanDeleteMessage(message))
+                                        {
+                                            <div class="message-menu">
+                                                @if (CanEditMessage(message))
+                                                {
+                                                    <div class="message-edit"
+                                                         @onclick="() => EditMessage(message)">
+                                                        Edit
+                                                    </div>
+                                                }
+                                                @if (CanDeleteMessage(message))
+                                                {
+                                                    <div class="message-delete"
+                                                         @onclick="() => OpenDeleteModal(message.Id)">
+                                                        Delete
+                                                    </div>
+                                                }
+                                            </div>
+                                        }
+
+                                        <div class="message-author-icon">
+                                        </div>
+                                        <div class="message-header">
+                                            <span class="message-author-name">@message.UserName</span>
+                                            @if (message.UpdatedAt == null)
                                             {
-                                                <div class="message-edit"
-                                                     @onclick="() => EditMessage(message)">
-                                                    Edit
-                                                </div>
+                                                <span class="message-timestamp">@message.CreatedAt</span>
                                             }
-                                            @if (PermService.CanDeleteMessage(currMembership!, message))
+                                            else
                                             {
-                                                <div class="message-delete"
-                                                     @onclick="() => OpenDeleteModal(message.Id)">
-                                                    Delete
-                                                </div>
+                                                <span class="message-timestamp">@message.UpdatedAt</span>
                                             }
                                         </div>
-                                    }
 
-                                    <div class="message-author-icon">
-                                    </div>
-                                    <div class="message-header">
-                                        <span class="message-author-name">@message.User</span>
-                                        @if (message.UpdatedAt == null)
+                                        @if (editingMessageId == message.Id)
                                         {
-                                            <span class="message-timestamp">@message.CreatedAt</span>
+                                            <div class="message-edit-area">
+                                                <textarea @ref="editTextArea"
+                                                          @bind="editedMessageText"
+                                                          @bind:event="oninput"
+                                                          @onkeydown="(KeyboardEventArgs e) => HandleEditKey(message.Id, e)"></textarea>
+                                                <div class="edit-actions">
+                                                    <span @onclick="CancelEdit">Cancel</span>
+                                                    <span class="message-edit-save"
+                                                          @onclick="() => SaveEdit(message.Id)">Save</span>
+                                                </div>
+                                            </div>
                                         }
                                         else
                                         {
-                                            <span class="message-timestamp">@message.UpdatedAt</span>
+                                            <div class="message-content">
+                                                @message.Content
+                                                @if (message.UpdatedAt != null)
+                                                {
+                                                    <span class="message-edited"> (edited)</span>
+                                                }
+                                            </div>
                                         }
                                     </div>
+                                }
+                            </div>
+                        </div>
 
-                                    @if (editingMessageId == message.Id)
-                                    {
-                                        <div class="message-edit-area">
-                                            <textarea @ref="editTextArea"
-                                                      @bind="editedMessageText"
-                                                      @bind:event="oninput"
-                                                      @onkeydown="(KeyboardEventArgs e) => HandleEditKey(message.Id, e)"></textarea>
-                                            <div class="edit-actions">
-                                                <span @onclick="CancelEdit">Cancel</span>
-                                                <span class="message-edit-save"
-                                                      @onclick="() => SaveEdit(message.Id)">Save</span>
-                                            </div>
-                                        </div>
-                                    }
-                                    else
-                                    {
-                                        <div class="message-content">
-                                            @message.Content
-                                            @if (message.UpdatedAt != null)
-                                            {
-                                                <span class="message-edited"> (edited)</span>
-                                            }
-                                        </div>
-                                    }
-                                </div>
-                            }
+                        <div class="channel-input">
+                            <textarea type="text"
+                                      @bind="@messageText"
+                                      @onkeydown="SendMessage"
+                                      @bind:event="oninput"
+                                      placeholder="Message @channel.Name"
+                                      spellcheck="true" />
                         </div>
                     </div>
+                }
+            </div>
 
-                    <div class="channel-input">
-                        <textarea type="text"
-                                  @bind="@messageText"
-                                  @onkeydown="SendMessage"
-                                  @bind:event="oninput"
-                                  placeholder="Message @channel.Name"
-                                  spellcheck="true" />
-                    </div>
+            @if (showMemberList)
+            {
+                <div class="member-list">
+                    <MemberList CommunityId="CommunityId" ChannelId="CurrentChannelId" />
                 </div>
             }
-        </div>
 
-        @if (showMemberList)
-        {
-            <div class="member-list">
-                <MemberList CommunityId="CommunityId" ChannelId="CurrentChannelId" />
-            </div>
-        }
-        
-        @if (showSearchContent)
-        {
-            <div class="search-backdrop" @onmousedown="LightClearSearch"></div>
+            @if (showSearchContent)
+            {
+                <div class="search-backdrop" @onmousedown="LightClearSearch"></div>
 
-            <div class="search-list" @onmousedown:stopPropagation="true">
-                <SearchList CommunityId="CommunityId" searchTerm="@searchText" />
-            </div>
+                <div class="search-list" @onmousedown:stopPropagation="true">
+                    <SearchList CommunityId="CommunityId" searchTerm="@searchText" />
+                </div>
+            }
         }
     </div>
     
@@ -203,6 +212,7 @@
     private bool showMemberList = true;
     private bool showSearchContent = false;
     private string? searchText;
+    private Guid subscribedChannelId = Guid.Empty;
 
 
     protected override async Task OnParametersSetAsync()
@@ -251,6 +261,7 @@
         }
 
         await MessageState.LoadMessagesAsync(CurrentChannelId);
+        subscribedChannelId = CurrentChannelId;
 
         currMembership = await db.Memberships.FirstOrDefaultAsync(m =>
             m.UserId == userId &&
@@ -321,8 +332,13 @@
             if (e.Key == "Enter" && !e.ShiftKey)
             {
                 if (string.IsNullOrWhiteSpace(messageText) || channel == null || userId == null) return;
-                await MessageService.SendMessageAsync(CurrentChannelId, messageText, userId);
-                await MessageState.LoadMessagesAsync(CurrentChannelId);
+                MessageDto? message = await MessageService.SendMessageAsync(CurrentChannelId, messageText, userId);
+                if (message is null) return;
+
+                MessageRealtime.NotifyMessageCreated(message);
+                await MessageHubContext.Clients
+                    .Group(MessageHub.GetChannelGroupName(message.ChannelId))
+                    .SendAsync("MessageCreated", message);
                 messageText = "";
             }
         }
@@ -334,7 +350,7 @@
         }
     }
 
-    private void EditMessage(Message m)
+    private void EditMessage(MessageDto m)
     {
         editingMessageId = m.Id;
         editedMessageText = m.Content;
@@ -363,9 +379,19 @@
     {
         try
         {
-            bool success = await MessageService.SaveEditAsync(id, editedMessageText);
-            if (!success) CancelEdit();
-            await MessageState.LoadMessagesAsync(CurrentChannelId);
+            if (userId is null) return;
+
+            MessageDto? message = await MessageService.SaveEditAsync(id, editedMessageText, userId);
+            if (message is null)
+            {
+                CancelEdit();
+                return;
+            }
+
+            MessageRealtime.NotifyMessageEdited(message);
+            await MessageHubContext.Clients
+                .Group(MessageHub.GetChannelGroupName(message.ChannelId))
+                .SendAsync("MessageEdited", message);
             editingMessageId = null;
             editedMessageText = "";
         }
@@ -381,8 +407,15 @@
     {
         try
         {
-            await MessageService.DeleteMessageAsync(id);
-            await MessageState.LoadMessagesAsync(CurrentChannelId);
+            if (userId is null) return;
+
+            DeletedMessageDto? message = await MessageService.DeleteMessageAsync(id, userId);
+            if (message is null) return;
+
+            MessageRealtime.NotifyMessageDeleted(message);
+            await MessageHubContext.Clients
+                .Group(MessageHub.GetChannelGroupName(message.ChannelId))
+                .SendAsync("MessageDeleted", message);
             CloseDeleteModal();
         }
         catch (Exception e)
@@ -397,6 +430,54 @@
     {
         ChannelState.OnChange += HandleChannelStateChanged;
         CommunityState.OnChange += HandleCommunityStateChanged;
+        MessageRealtime.MessageCreated += HandleMessageCreated;
+        MessageRealtime.MessageEdited += HandleMessageEdited;
+        MessageRealtime.MessageDeleted += HandleMessageDeleted;
+    }
+
+    private bool CanEditMessage(MessageDto message)
+    {
+        return currMembership?.UserId == message.UserId;
+    }
+
+    private bool CanDeleteMessage(MessageDto message)
+    {
+        return currMembership?.Role == Roles.Owner ||
+            currMembership?.Role == Roles.Moderator ||
+            currMembership?.UserId == message.UserId;
+    }
+
+    private void HandleMessageCreated(MessageDto message)
+    {
+        if (message.ChannelId != subscribedChannelId) return;
+
+        _ = InvokeAsync(() =>
+        {
+            MessageState.AddMessage(message);
+            StateHasChanged();
+        });
+    }
+
+    private void HandleMessageEdited(MessageDto message)
+    {
+        if (message.ChannelId != subscribedChannelId) return;
+
+        _ = InvokeAsync(() =>
+        {
+            MessageState.UpdateMessage(message);
+            StateHasChanged();
+        });
+    }
+
+    private void HandleMessageDeleted(DeletedMessageDto message)
+    {
+        if (message.ChannelId != subscribedChannelId) return;
+
+        _ = InvokeAsync(() =>
+        {
+            MessageState.RemoveMessage(message.Id);
+            StateHasChanged();
+        });
     }
 
     private void HandleChannelStateChanged()
@@ -415,6 +496,9 @@
     {
         ChannelState.OnChange -= HandleChannelStateChanged;
         CommunityState.OnChange -= HandleCommunityStateChanged;
+        MessageRealtime.MessageCreated -= HandleMessageCreated;
+        MessageRealtime.MessageEdited -= HandleMessageEdited;
+        MessageRealtime.MessageDeleted -= HandleMessageDeleted;
     }
 
 }

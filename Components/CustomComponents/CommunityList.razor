@@ -7,17 +7,19 @@
 @inject MemberReportService MemRepService
 @inject CommunityService ComListService
 @inject ErrorService ErrorService
+@inject IJSRuntime JS
 
 @if (CommunityState.UserCommunities.Any())
 {
     <div class="cl-container">
     @foreach (var community in CommunityState.UserCommunities)
     {
-        <a href="@($"/channels/{community.Id}")"
+        <div href="@($"/channels/{community.Id}")"
                class="community-list-item @(community.Id == ActiveCommunityId ? "active" : "")"
+               @onclick="@(() => Nav.NavigateTo($"/channels/{community.Id}", forceLoad: true))"
                @oncontextmenu:preventDefault="true" @oncontextmenu="(e) => OpenCommunityMenu(e, community)">
                 <span>@community.Name</span>
-        </a>
+        </div>
     }
     </div>
 }
@@ -240,8 +242,9 @@
             }
 
             Guid[] newCommunityIds = await ComListService.CreateCommunityAsync(user);
-            await CommunityState.LoadUserCommunitiesAsync(AuthStateProvider);
-            Nav.NavigateTo($"/channels/{newCommunityIds[0]}/{newCommunityIds[1]}");
+            //await CommunityState.LoadUserCommunitiesAsync(AuthStateProvider);
+            //Nav.NavigateTo($"/channels/{newCommunityIds[0]}/{newCommunityIds[1]}", forceLoad: true);
+            await JS.InvokeVoidAsync("open", $"/channels/{newCommunityIds[0]}/{newCommunityIds[1]}", "_self");
         }
         catch (Exception e)
         {

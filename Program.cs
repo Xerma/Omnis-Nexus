@@ -5,6 +5,7 @@ using Microsoft.EntityFrameworkCore;
 using OmnisNexus.Components;
 using OmnisNexus.Components.Account;
 using OmnisNexus.Data;
+using OmnisNexus.Hubs;
 using OmnisNexus.Services;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -12,6 +13,7 @@ var builder = WebApplication.CreateBuilder(args);
 // Add services to the container.
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
+builder.Services.AddSignalR();
 
 builder.Services.AddCascadingAuthenticationState();
 builder.Services.AddScoped<IdentityRedirectManager>();
@@ -27,6 +29,7 @@ builder.Services.AddScoped<CommunityService>();
 builder.Services.AddScoped<MessagingService>();
 builder.Services.AddScoped<MessageStateService>();
 builder.Services.AddScoped<HomeService>();
+builder.Services.AddSingleton<MessageRealtimeService>();
 
 builder.Services.AddDataProtection().PersistKeysToFileSystem(new DirectoryInfo("/app/keys")).SetApplicationName("OmnisNexus");
 
@@ -86,6 +89,7 @@ app.UseAntiforgery();
 app.MapStaticAssets().AllowAnonymous();
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();
+app.MapHub<MessageHub>("/hubs/messages");
 
 // Add additional endpoints required by the Identity /Account Razor components.
 app.MapAdditionalIdentityEndpoints();

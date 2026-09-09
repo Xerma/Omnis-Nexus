@@ -1,0 +1,78 @@
+﻿@inject IDbContextFactory<ApplicationDbContext> DbFactory
+@inject NavigationManager Nav
+@inject AuthenticationStateProvider AuthStateProvider
+
+<div class="">
+
+    <div class="members-all">
+        <h5>
+            All Members - @allMemberships.Count
+        </h5>
+        @foreach (Membership m in allMemberships)
+        {
+            <div class="member-listing">
+                <div class="member-listing-image">
+
+                </div>
+                <div class="member-listing-name">
+                    @m.User.UserName
+                </div>
+            </div>
+            
+        }
+    </div>
+
+    <div class="members-online">
+
+    </div>
+
+    <div class="members-offline">
+
+    </div>
+
+</div>
+
+@code {
+
+    [Parameter]
+    public Guid CommunityId { get; set; }
+
+    [Parameter]
+    public Guid? ChannelId { get; set; }
+
+    private List<ApplicationUser> onlineUsers = new();
+
+    private List<ApplicationUser> offlineUsers = new();
+
+    private List<ApplicationUser> allUsers = new(); //temp
+
+    private List<Membership> allMemberships = new(); //temp
+
+    ClaimsPrincipal? cp;
+    private string? userId;
+
+    ApplicationUser? user;
+
+
+
+    protected override async Task OnParametersSetAsync()
+    {
+        using var db = await DbFactory.CreateDbContextAsync();
+
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        cp = authState.User;
+
+        if (cp.Identity?.IsAuthenticated == true)
+        {
+            userId = cp.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        }
+
+        user = await db.Users.FirstOrDefaultAsync(u => u.Id == userId);
+
+        allMemberships = await db.Memberships
+        .Include(m => m.User)
+        .Where(m => m.CommunityId == CommunityId)
+        .ToListAsync();
+    }
+
+}

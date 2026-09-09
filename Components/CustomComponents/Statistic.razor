@@ -1,0 +1,19 @@
+﻿
+<div class="stat">
+    <span class="stat-name">
+        @statName
+    </span>
+    <span class="stat-val">
+        @statVal
+    </span>
+</div>
+
+@code {
+
+    [Parameter]
+    public string statName { get; set; } = "";
+
+    [Parameter]
+    public int statVal { get; set; }
+
+}

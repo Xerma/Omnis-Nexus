@@ -1,0 +1,11 @@
+﻿
+.stat {
+    width: 100%;
+    min-height: 40px;
+    display: flex;
+    flex-direction: row;
+}
+
+.stat-val {
+    margin-left: auto;
+}

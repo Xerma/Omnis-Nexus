@@ -1,7 +1,143 @@
 ﻿@page "/"
+@attribute [Authorize]
+
+@inject IDbContextFactory<ApplicationDbContext> DbFactory
+@inject AuthenticationStateProvider AuthStateProvider
+@inject NavigationManager Nav
+@inject CommunityStateService CommunityState
+@inject HomeService HomeService
+@inject ErrorService ErrorService
+@inject CommunityService CommunityService
+
 
 <PageTitle>Home</PageTitle>
 
-<h1>Hello, world!</h1>
+<div class="home-container">
+    <div class="user-stats">
+        <div class="stat-header">
+            <span>Statistics</span>
+        </div>
 
-Welcome to your new app.
+        <div class="stat-list">
+            <Statistic statName="Communities Joined" statVal="@comsJoinedInt" />
+            <Statistic statName="Communities Owned" statVal="@comsOwnedInt" />
+            <Statistic statName="Messages Sent" statVal="@messagesSentInt" />
+            <Statistic statName="Messages Edited" statVal="@messagesEditedInt" />
+        </div>
+
+        <form action="Account/Logout" method="post" class="logout-form">
+            <AntiforgeryToken />
+            <input type="hidden" name="ReturnUrl" value="@currentUrl" />
+
+            <button type="submit" class="logout-button">
+                Logout
+            </button>
+        </form>
+    </div>
+
+    <div class="com-container">
+        <div class="com-header">
+            <span>Communities</span>
+        </div>
+        <div class="all-coms">
+            @foreach (var community in CommunityState.AllCommunities)
+            {
+                <div @onclick="() => JoinOrNavCommunity(community.Id)" class="com-listing">
+                    <span class="com-name">@community.Name</span>
+                    <span class="com-count">@community.MemberCount</span>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+
+@code {
+
+    private string? userId = "";
+    ClaimsPrincipal? cp;
+
+    private string? currentUrl;
+
+    HomeStats stats = new();
+    private int comsJoinedInt;
+    private int messagesSentInt;
+    private int comsOwnedInt;
+    private int messagesEditedInt;
+
+    private void OnLocationChanged(object? sender, LocationChangedEventArgs e)
+    {
+        currentUrl = Nav.ToBaseRelativePath(e.Location);
+        StateHasChanged();
+    }
+
+    public void Dispose()
+    {
+        CommunityState.OnChange -= HandleChange;
+        Nav.LocationChanged -= OnLocationChanged;
+    }
+
+    private void HandleChange()
+    {
+        InvokeAsync(StateHasChanged);
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        currentUrl = Nav.ToBaseRelativePath(Nav.Uri);
+        Nav.LocationChanged += OnLocationChanged;
+        CommunityState.OnChange += HandleChange;
+
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        cp = authState.User;
+
+        if (cp.Identity?.IsAuthenticated == true)
+        {
+            userId = cp.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        }
+
+        try
+        {
+            await CommunityState.LoadAllCommunitiesAsync();
+        }
+        catch (Exception e)
+        {
+            await ErrorService.ShowErrorAsync("Error getting communities.");
+            Console.WriteLine($"Error getting communities: {e.Message}");
+        }
+
+        if (string.IsNullOrWhiteSpace(userId)) return;
+
+        try
+        {
+            stats = await HomeService.GetStatsAsync(userId);
+            comsJoinedInt = stats.CommunitiesJoined;
+            messagesSentInt = stats.MessagesSent;
+            comsOwnedInt = stats.CommunitiesOwned;
+            messagesEditedInt = stats.MessagesEdited;
+        }
+        catch (Exception e)
+        {
+            await ErrorService.ShowErrorAsync("Error getting user statistics.");
+            Console.WriteLine($"Error getting user statistics: {e.Message}");
+        }
+    }
+
+    private async Task JoinOrNavCommunity(Guid communityId)
+    {
+        try
+        {
+            string? navTo = await CommunityService.JoinOrNavCommunity(communityId, userId);
+            if (string.IsNullOrWhiteSpace(navTo)) return;
+
+            await CommunityState.LoadUserCommunitiesAsync(AuthStateProvider);
+            Nav.NavigateTo($"/channels/{navTo}");
+        }
+        catch (Exception e)
+        {
+            await ErrorService.ShowErrorAsync("Error joining community.");
+            Console.WriteLine($"Error joining community: {e.Message}");
+        }
+    }
+
+}

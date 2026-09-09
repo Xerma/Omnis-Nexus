@@ -1,0 +1,427 @@
+﻿@page "/channels/{CommunityId:guid}"
+@page "/channels/{CommunityId:guid}/{CurrentChannelId:guid}"
+
+@inject IDbContextFactory<ApplicationDbContext> DbFactory
+@inject NavigationManager Nav
+@inject AuthenticationStateProvider AuthStateProvider
+@inject IPermissionService PermService
+@inject MessagingService MessageService
+@inject ErrorService ErrorService
+@inject MessageStateService MessageState
+@inject ChannelStateService ChannelState
+@inject CommunityStateService CommunityState
+
+
+<PageTitle>@pageTitle</PageTitle>
+
+<div class="channels-page">
+
+    <div class="channel-list-outer">
+        <div class="community-menu">
+            @if (community != null)
+            {
+                @community.Name
+            }
+            else
+            {
+                <div>Community not found</div>
+            }
+        </div>
+
+        <div class="channel-list-inner">
+            <ChannelList CommunityId="CommunityId" />
+        </div>
+    </div>
+
+    <div class="channel-content-outer">
+        <div class="channel-titlebar">
+            @if (channel == null)
+            {
+                <span>Channel Not Found</span>
+            } else
+            {
+                <span>@channel.Name</span>
+            }
+            <div class="search-input-container">
+                <input class="search-input" type="text" placeholder="Search" @bind="@searchText" @bind:event="oninput" @onkeydown="HandleSearch" />
+                @if (!string.IsNullOrWhiteSpace(searchText))
+                {
+                    <button class="clear-search-btn" @onclick="HardClearSearch">x</button>
+                }
+            </div>
+        </div>
+
+        @if (community == null || channel == null || currMembership == null)
+        {
+            <div>Loading...</div>
+        }
+        else
+        {
+            <div class="channel-content">
+                @if (channel != null)
+                {
+                    <div class="channel-view">
+                        <div class="message-list-outer">
+                            <div class="message-list-inner">
+                                @foreach (Message message in MessageState.Messages)
+                                {
+                                    <div class="message">
+                                        @if (PermService.CanEditMessage(currMembership, message) || PermService.CanDeleteMessage(currMembership, message))
+                                        {
+                                            <div class="message-menu">
+                                                @if (PermService.CanEditMessage(currMembership, message))
+                                                {
+                                                    <div class="message-edit"
+                                                         @onclick="() => EditMessage(message)">
+                                                        Edit
+                                                    </div>
+                                                }
+                                                @if (PermService.CanDeleteMessage(currMembership, message))
+                                                {
+                                                    <div class="message-delete"
+                                                         @onclick="() => OpenDeleteModal(message.Id)">
+                                                        Delete
+                                                    </div>
+                                                }
+                                            </div>
+                                        }
+
+                                        <div class="message-author-icon">
+                                        </div>
+                                        <div class="message-header">
+                                            <span class="message-author-name">@message.User</span>
+                                            @if (message.UpdatedAt == null)
+                                            {
+                                                <span class="message-timestamp">@message.CreatedAt</span>
+                                            }
+                                            else
+                                            {
+                                                <span class="message-timestamp">@message.UpdatedAt</span>
+                                            }
+                                        </div>
+
+                                        @if (editingMessageId == message.Id)
+                                        {
+                                            <div class="message-edit-area">
+                                                <textarea @ref="editTextArea"
+                                                          @bind="editedMessageText"
+                                                          @bind:event="oninput"
+                                                          @onkeydown="(KeyboardEventArgs e) => HandleEditKey(message.Id, e)"></textarea>
+                                                <div class="edit-actions">
+                                                    <span @onclick="CancelEdit">Cancel</span>
+                                                    <span class="message-edit-save"
+                                                          @onclick="() => SaveEdit(message.Id)">Save</span>
+                                                </div>
+                                            </div>
+                                        }
+                                        else
+                                        {
+                                            <div class="message-content">
+                                                @message.Content
+                                                @if (message.UpdatedAt != null)
+                                                {
+                                                    <span class="message-edited"> (edited)</span>
+                                                }
+                                            </div>
+                                        }
+                                    </div>
+                                }
+                            </div>
+                        </div>
+
+                        <div class="channel-input">
+                            <textarea type="text"
+                                      @bind="@messageText"
+                                      @onkeydown="SendMessage"
+                                      @bind:event="oninput"
+                                      placeholder="Message @channel.Name"
+                                      spellcheck="true" />
+                        </div>
+                    </div>
+                }
+            </div>
+
+            @if (showMemberList)
+            {
+                <div class="member-list">
+                    <MemberList CommunityId="CommunityId" ChannelId="CurrentChannelId" />
+                </div>
+            }
+
+            @if (showSearchContent)
+            {
+                <div class="search-backdrop" @onmousedown="LightClearSearch"></div>
+
+                <div class="search-list" @onmousedown:stopPropagation="true">
+                    <SearchList CommunityId="CommunityId" searchTerm="@searchText" />
+                </div>
+            }
+        }
+    </div>
+    
+
+</div>
+
+@if (showDeleteModal)
+{
+    <div class="modal-backdrop" @onclick="CloseDeleteModal">
+        <div class="delete-modal" @onclick:stopPropagation="true">
+            <h5>Delete Message</h5>
+            <p>Are you sure you want to delete this message? This cannot be undone.</p>
+            <div class="del-modal-btns">
+                <span class="del-modal-can-btn" @onclick="CloseDeleteModal">Cancel</span>
+                <span class="del-modal-del-btn" @onclick="() => DeleteMessage(deleteMessageId)">Delete</span>
+            </div>
+        </div>
+    </div>
+}
+
+
+@code {
+
+    [Parameter]
+    public Guid CommunityId { get; set; }
+
+    [Parameter]
+    public Guid CurrentChannelId { get; set; }
+
+    private string pageTitle => community is not null ? $"{community!.Name}" : "Error: Community Not Found";
+
+    private Channel? channel;
+    private Community? community;
+
+    private Membership? currMembership;
+
+    private string? messageText;
+
+    ClaimsPrincipal? cp;
+    private string? userId;
+
+    ApplicationUser? user;
+
+    private Guid? editingMessageId;
+    private string editedMessageText = "";
+
+    private ElementReference editTextArea;
+
+    private bool showDeleteModal = false;
+    private Guid deleteMessageId;
+
+    private bool showMemberList = true;
+    private bool showSearchContent = false;
+    private string? searchText;
+
+
+    protected override async Task OnParametersSetAsync()
+    {
+        using var db = await DbFactory.CreateDbContextAsync();
+
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        cp = authState.User;
+
+        if (cp.Identity?.IsAuthenticated == true)
+        {
+            userId = cp.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        }
+
+        user = await db.Users.FirstOrDefaultAsync(u => u.Id == userId);
+
+        if (CurrentChannelId == Guid.Empty)
+        {
+            Channel? firstChannel = await db.Channels
+            .Where(c => c.CommunityId == CommunityId)
+            .OrderBy(c => c.CreatedAt)
+            .FirstOrDefaultAsync();
+
+            if (firstChannel != null)
+            {
+                Nav.NavigateTo($"/channels/{CommunityId}/{firstChannel.Id}");
+                return;
+            }
+        }
+
+        await CommunityState.LoadUserCommunitiesAsync(AuthStateProvider);
+        community = CommunityState.GetCommunity(CommunityId);
+        if (community is null)
+        {
+            community = await db.Communities.FirstOrDefaultAsync(c =>
+            c.Id == CommunityId);
+        }
+
+        await ChannelState.LoadChannelsAsync(AuthStateProvider, CommunityId);
+        channel = ChannelState.GetChannel(CurrentChannelId);
+        if (channel is null)
+        {
+            channel = await db.Channels.FirstOrDefaultAsync(c =>
+            c.Id == CurrentChannelId &&
+            c.CommunityId == CommunityId);
+        }
+
+        await MessageState.LoadMessagesAsync(CurrentChannelId);
+
+        currMembership = await db.Memberships.FirstOrDefaultAsync(m =>
+            m.UserId == userId &&
+            m.CommunityId == CommunityId);
+    }
+
+    private async Task HandleSearch(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter" && !string.IsNullOrWhiteSpace(searchText))
+        {
+            showMemberList = false;
+            showSearchContent = true;
+        }
+        else if (e.Key == "Enter" && string.IsNullOrWhiteSpace(searchText))
+        {
+            ShowMemberList();
+        }
+
+        if (e.Key == "Escape" && showSearchContent == true)
+        {
+            searchText = "";
+            ShowMemberList();
+        }
+    }
+
+    private void LightClearSearch()
+    {
+        showMemberList = true;
+        showSearchContent = false;
+    }
+
+    private void HardClearSearch()
+    {
+        searchText = "";
+        showMemberList = true;
+        showSearchContent = false;
+    }
+
+    private void ShowMemberList()
+    {
+        showMemberList = true;
+        showSearchContent = false;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (editingMessageId != null)
+        {
+            await editTextArea.FocusAsync();
+        }
+    }
+
+    private void OpenDeleteModal(Guid id)
+    {
+        showDeleteModal = true;
+        deleteMessageId = id;
+    }
+
+    private void CloseDeleteModal()
+    {
+        showDeleteModal = false;
+    }
+
+    private async Task SendMessage(KeyboardEventArgs e)
+    {
+        try
+        {
+            if (e.Key == "Enter" && !e.ShiftKey)
+            {
+                if (string.IsNullOrWhiteSpace(messageText) || channel == null || userId == null) return;
+                await MessageService.SendMessageAsync(CurrentChannelId, messageText, userId);
+                await MessageState.LoadMessagesAsync(CurrentChannelId);
+                messageText = "";
+            }
+        }
+        catch (Exception ex)
+        {
+            await ErrorService.ShowErrorAsync("Error sending message.");
+            Console.WriteLine($"Error sending message: {ex.Message}");
+            return;
+        }
+    }
+
+    private void EditMessage(Message m)
+    {
+        editingMessageId = m.Id;
+        editedMessageText = m.Content;
+    }
+
+    private void CancelEdit()
+    {
+        editingMessageId = null;
+        editedMessageText = "";
+    }
+
+    private async Task HandleEditKey(Guid id, KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter" && !e.ShiftKey)
+        {
+            await SaveEdit(id);
+        }
+
+        if (e.Key == "Escape")
+        {
+            CancelEdit();
+        }
+    }
+
+    private async Task SaveEdit(Guid id)
+    {
+        try
+        {
+            bool success = await MessageService.SaveEditAsync(id, editedMessageText);
+            if (!success) CancelEdit();
+            await MessageState.LoadMessagesAsync(CurrentChannelId);
+            editingMessageId = null;
+            editedMessageText = "";
+        }
+        catch (Exception e)
+        {
+            await ErrorService.ShowErrorAsync("Error saving message.");
+            Console.WriteLine($"Error saving message: {e.Message}");
+            return;
+        }
+    }
+
+    private async Task DeleteMessage(Guid id)
+    {
+        try
+        {
+            await MessageService.DeleteMessageAsync(id);
+            await MessageState.LoadMessagesAsync(CurrentChannelId);
+            CloseDeleteModal();
+        }
+        catch (Exception e)
+        {
+            await ErrorService.ShowErrorAsync("Error deleting message.");
+            Console.WriteLine($"Error deleting message: {e.Message}");
+            return;
+        }
+    }
+
+    protected override void OnInitialized()
+    {
+        ChannelState.OnChange += HandleChannelStateChanged;
+        CommunityState.OnChange += HandleCommunityStateChanged;
+    }
+
+    private void HandleChannelStateChanged()
+    {
+        channel = ChannelState.GetChannel(CurrentChannelId);
+        InvokeAsync(StateHasChanged);
+    }
+
+    private void HandleCommunityStateChanged()
+    {
+        community = CommunityState.GetCommunity(CommunityId);
+        InvokeAsync(StateHasChanged);
+    }
+
+    public void Dispose()
+    {
+        ChannelState.OnChange -= HandleChannelStateChanged;
+        CommunityState.OnChange -= HandleCommunityStateChanged;
+    }
+
+}

@@ -1,5 +1,9 @@
 html, body {
     font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+    margin: 0;
+    padding: 0;
+    height: 100%;
+    overflow: hidden;
 }
 
 a, .btn-link {
@@ -14,10 +18,6 @@ a, .btn-link {
 
 .btn:focus, .btn:active:focus, .btn-link.nav-link:focus, .form-control:focus, .form-check-input:focus {
   box-shadow: 0 0 0 0.1rem white, 0 0 0 0.25rem #258cfb;
-}
-
-.content {
-    padding-top: 1.1rem;
 }
 
 h1:focus {
@@ -58,3 +58,41 @@ h1:focus {
 .form-floating > .form-control-plaintext:focus::placeholder, .form-floating > .form-control:focus::placeholder {
     text-align: start;
 }
+
+.search-hit {
+    background-color: rgba(255, 255, 0, 0.2);
+}
+
+.on-error-container {
+    display: flex;
+    z-index: 9999;
+    position: fixed;
+    top: 0;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: 40px;
+    margin: 20px;
+}
+
+.on-error-popup {
+    text-align: center;
+    align-content: center;
+    color: white;
+    background-color: rgb(220, 99, 99);
+    padding: 10px 20px;
+    border-radius: 5px;
+    height: auto;
+}
+
+input {
+    background-color: rgb(25, 25, 25);
+    color: rgb(206, 206, 206);
+    border-color: rgb(56, 56, 56);
+    border-width: 1px;
+    padding: 0 5px;
+}
+
+    input:focus {
+        outline: 1px solid rgb(57, 221, 245);
+    }

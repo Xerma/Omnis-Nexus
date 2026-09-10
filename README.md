@@ -1,29 +1,149 @@
-<strong>**DO NOT DISTRIBUTE OR PUBLICLY POST SOLUTIONS TO THESE LABS. MAKE ALL FORKS OF THIS REPOSITORY WITH SOLUTION CODE PRIVATE. PLEASE REFER TO THE STUDENT CODE OF CONDUCT AND ETHICAL EXPECTATIONS FOR COLLEGE OF INFORMATION TECHNOLOGY STUDENTS FOR SPECIFICS. **</strong>
+# OmnisNexus
 
-# WESTERN GOVERNORS UNIVERSITY 
-## D424 – SOFTWARE ENGINEERING CAPSTONE
-Welcome to Software Engineering Capstone! This is an opportunity for students to develop full stack software engineering documentation and applications. They will execute documentation, unit testing, revision of software applications, and deploy software applications with scripts and containers on a cloud platform.
+OmnisNexus is a Blazor Server community messaging application built for the WGU D424 Software Engineering Capstone. The app lets authenticated users create and join communities, organize discussions into channels, send and manage messages, search community conversations, and view member activity.
 
-FOR SPECIFIC TASK INSTRUCTIONS AND REQUIREMENTS FOR THIS ASSESSMENT, PLEASE REFER TO THE COURSE PAGE.
-BASIC INSTRUCTIONS
-For this assessment, you will deploy your developed full stack software product to a web service of your choice.
+## Features
 
+- User registration, login, account management, and authentication through ASP.NET Core Identity
+- Community creation, editing, joining, leaving, and deletion
+- Channel creation, editing, navigation, and deletion
+- Message sending, editing, deletion, timestamps, and edited indicators
+- Community-wide message search grouped by channel
+- Role-based permissions for owners, moderators, and members
+- Member reports with role, join date, and message count
+- Home dashboard statistics for joined communities, owned communities, sent messages, and edited messages
+- Automated EF Core migrations at application startup
+- Unit tests for core services
 
-## SUPPLEMENTAL RESOURCES  
-1.	How to clone a project to IntelliJ using Git?
+## Tech Stack
 
-> Ensure that you have Git installed on your system and that IntelliJ is installed using [Toolbox](https://www.jetbrains.com/toolbox-app/). Make sure that you are using version 2022.3.2. Once this has been confirmed, click the clone button and use the 'IntelliJ IDEA (HTTPS)' button. This will open IntelliJ with a prompt to clone the proejct. Save it in a safe location for the directory and press clone. IntelliJ will prompt you for your credentials. Enter in your WGU Credentials and the project will be cloned onto your local machine.  
+- .NET 10
+- Blazor Server with interactive server components
+- ASP.NET Core Identity
+- Entity Framework Core
+- PostgreSQL through `Npgsql.EntityFrameworkCore.PostgreSQL`
+- xUnit, Moq, and EF Core InMemory for tests
+- Bootstrap and custom CSS
+- Railway deployment support through GitLab CI
 
-2. How to create a branch and start Development?
+## Project Structure
 
-- GitLab method
-> Press the '+' button located near your branch name. In the dropdown list, press the 'New branch' button. This will allow you to create a name for your branch. Once the branch has been named, you can select 'Create Branch' to push the branch to your repository.
+```text
+Components/              Blazor pages, layouts, account UI, and reusable UI components
+Data/                    Identity user and EF Core application DbContext
+Migrations/              EF Core database migrations
+Models/                  Community, channel, membership, message, role, and view models
+Services/                Business logic and state services
+OmnisNexus.Tests/        Unit tests and test database helpers
+wwwroot/                 Static assets, CSS, Bootstrap files, and favicon
+Program.cs               Application startup, service registration, middleware, and migrations
+```
 
-- IntelliJ method
-> In IntelliJ, Go to the 'Git' button on the top toolbar. Select the new branch option and create a name for the branch. Make sure checkout branch is selected and press create. You can now add a commit message and push the new branch to the local repo.
+## Prerequisites
 
-## SUPPORT
-If you need additional support, please navigate to the course page and reach out to your course instructor.
+- .NET 10 SDK
+- PostgreSQL database
+- EF Core CLI tools, if you need to create or update migrations manually
 
-## FUTURE USE
-Take this opportunity to create or add to a simple resume portfolio to highlight and showcase your work for future use in career search, experience, and education!
+Install the EF Core CLI if it is not already available:
+
+```powershell
+dotnet tool install --global dotnet-ef
+```
+
+## Configuration
+
+The application reads its database connection from `ConnectionStrings:DefaultConnection`. The checked-in `appsettings.json` leaves this value blank so local and production secrets are not committed.
+
+For local development, store the connection string in user secrets:
+
+```powershell
+dotnet user-secrets set "ConnectionStrings:DefaultConnection" "Host=localhost;Port=5432;Database=omnisnexus;Username=postgres;Password=your_password"
+```
+
+For deployment, set the same configuration key through the host environment. On many platforms this can be provided as:
+
+```text
+ConnectionStrings__DefaultConnection
+```
+
+The app also supports a `PORT` environment variable and binds to `http://0.0.0.0:{PORT}` when it is present.
+
+## Run Locally
+
+Restore dependencies:
+
+```powershell
+dotnet restore
+```
+
+Build the solution:
+
+```powershell
+dotnet build
+```
+
+Run the app:
+
+```powershell
+dotnet run
+```
+
+The default launch profiles use:
+
+- `http://localhost:5120`
+- `https://localhost:7004`
+
+EF Core migrations are applied automatically during application startup. Make sure the configured PostgreSQL database exists and the configured user has permission to create and update tables.
+
+## Testing
+
+Run the unit test project:
+
+```powershell
+dotnet test
+```
+
+The tests use the EF Core InMemory provider and focus on service-layer behavior such as permissions, community management, channel management, messaging, and error handling.
+
+## Database Model
+
+OmnisNexus stores four main domain entities in addition to ASP.NET Core Identity tables:
+
+- `Community`: a user-owned discussion space
+- `Channel`: a named conversation area inside a community
+- `Membership`: a user's relationship to a community and assigned role
+- `Message`: a user-authored message in a channel
+
+Relationships use cascade deletion for memberships, channels, and messages. Community ownership is restricted so owner records are not accidentally removed through community deletes.
+
+## Roles and Permissions
+
+OmnisNexus defines three community roles:
+
+- `Owner`: can manage the community, manage members, manage channels, and delete messages
+- `Moderator`: can manage channels and delete messages
+- `Member`: can participate in channels and manage their own messages
+
+Message authors can edit their own messages. Owners and moderators can delete messages for moderation.
+
+## Deployment
+
+The repository includes a GitLab CI configuration that deploys the `production` branch to Railway:
+
+```yaml
+railway up --ci --service "omnis-nexus"
+```
+
+Required deployment configuration:
+
+- `RAILWAY_TOKEN` in GitLab CI variables
+- A valid PostgreSQL connection string configured for the application
+- A writable `/app/keys` directory for ASP.NET Core Data Protection keys in the deployed container
+
+## Development Notes
+
+- Keep connection strings and credentials out of committed files.
+- Add or update EF Core migrations when the domain model changes.
+- Run `dotnet test` before merging changes that affect services, permissions, messaging, or database behavior.
+- Keep business rules in services where possible so behavior remains testable.

@@ -1,0 +1,408 @@
+﻿@using OmnisNexus.Components.Account.Pages.Manage
+@inject IDbContextFactory<ApplicationDbContext> DbFactory
+@inject AuthenticationStateProvider AuthStateProvider
+@inject NavigationManager Nav
+@inject CommunityStateService CommunityState
+@inject IPermissionService PermService
+@inject MemberReportService MemRepService
+@inject CommunityService ComListService
+@inject ErrorService ErrorService
+@inject IJSRuntime JS
+
+@if (CommunityState.UserCommunities.Any())
+{
+    <div class="cl-container">
+    @foreach (var community in CommunityState.UserCommunities)
+    {
+        <div href="@($"/channels/{community.Id}")"
+               class="community-list-item @(community.Id == ActiveCommunityId ? "active" : "")"
+               @onclick="@(() => Nav.NavigateTo($"/channels/{community.Id}", forceLoad: true))"
+               @oncontextmenu:preventDefault="true" @oncontextmenu="(e) => OpenCommunityMenu(e, community)">
+                <span>@community.Name</span>
+        </div>
+    }
+    </div>
+}
+
+<div class="community-list-item cl-add" @onclick="CreateCommunity">
+    +
+</div>
+
+@if (showCommunityMenu && communityForMenu != null)
+{
+    <div class="menu-backdrop" @onclick="CloseCommunityMenu" @oncontextmenu="CloseCommunityMenu" @oncontextmenu:preventDefault="true">
+        <div class="community-context-menu" style="@($"top: {communityMenuY}px; left: {communityMenuX}px;")">
+            @if (PermService.CanManageCommunity(currMembership))
+            {
+                <div class="menu-edit-btn" @onclick="OpenEditCommunityModal">Edit</div>
+                @if (currMembership.Role == Roles.Owner)
+                {
+                    <div class="menu-del-btn" @onclick="OpenDeleteCommunityModal">Delete</div>
+                }
+            }
+            @if (PermService.CanLeaveCommunity(currMembership))
+            {
+                <div class="menu-del-btn" @onclick="OpenLeaveCommunityModal">Leave</div>
+            }
+        </div>
+    </div>
+}
+
+@if (showEditCommunityModal)
+{
+    <div class="modal-backdrop" @onmousedown="CloseEditCommunityModal">
+        <div class="com-modal edit-modal" @onmousedown:stopPropagation="true">
+            <h5>Edit Community</h5>
+            <div class="com-modal-container">
+                <div class="com-modal-nav">
+                    <div class="@(comModalHeader == "Overview" ? "active" : "")" @onclick="ShowModalOverview">Overview</div>
+                    <div class="@(comModalHeader == "Member Report" ? "active" : "")" @onclick="() => ShowModalMemberReport(communityForMenu.Id)">Member Report</div>
+                </div>
+                <div class="com-modal-main">
+                    <div class="report-modal-header">
+                        <span class="report-header">@comModalHeader</span>
+                        @if (comModalHeader == "Member Report")
+                        {
+                            <span class="report-time">Generated at @reportGeneratedAt</span>
+                        }
+                    </div>
+                    <div class="com-modal-content">
+                        @if (showModalOverview)
+                        {
+                            <p>Community name</p>
+                            <input type="text" class="community-name-input" @bind:event="oninput" @bind="@newComName" @onkeydown="HandleEditKeys"/>
+                            <div class="modal-btns">
+                                <span class="modal-can-btn" @onclick="CloseEditCommunityModal">Cancel</span>
+                                <span class="modal-save-btn" @onclick="SaveCommunityEdits">Save</span>
+                                @if (currMembership.Role == Roles.Owner)
+                                {
+                                    <span class="modal-del-btn" @onclick="OpenDeleteCommunityModal">Delete</span>
+                                }
+                            </div>
+                        }
+                        else if (showModalMemberReport)
+                        {
+                            <table class="report-table">
+                                <thead>
+                                    <tr class="report-h-row">
+                                        <th class="report-h-col">Username</th>
+                                        <th class="report-h-col">Role</th>
+                                        <th class="report-h-col">Joined At</th>
+                                        <th class="report-h-col">Message Count</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var item in memberReportItems)
+                                    {
+                                        <tr class="report-row">
+                                            <td class="report-col-l">@item.Username</td>
+                                            <td class="report-role-td">
+                                                @if (item.Role == currMembership.Role || item.Role == Roles.Owner)
+                                                {
+                                                    @item.Role
+                                                }
+                                                else
+                                                {
+                                                    <select value="@item.Role"
+                                                        @onchange="async e => await UpdateMemberRole(item.UserId, communityForMenu.Id, e.Value?.ToString())">
+                                                        <option value="Member" selected="@(item.Role == Roles.Member)">Member</option>
+                                                        <option value="Moderator" selected="@(item.Role == Roles.Moderator)">Moderator</option>
+                                                    </select>
+                                                }
+                                            </td>
+                                            <td class="report-col-c">@item.JoinedAt.ToString("MM-dd-yyyy")</td>
+                                            <td class="report-col-r">@item.MessageCount</td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@if (showDeleteCommunityModal)
+{
+    <div class="modal-backdrop" @onmousedown="CloseDeleteCommunityModal">
+        <div class="com-modal" @onmousedown:stopPropagation="true">
+            <p>Are you sure you want to delete <b>@communityForMenu.Name</b>?</p>
+            <div class="modal-btns">
+                <span class="modal-can-btn" @onclick="CloseDeleteCommunityModal">Cancel</span>
+                <span class="modal-del-btn" @onclick="DeleteCommunity">Delete</span>
+            </div>
+        </div>
+    </div>
+}
+
+@if (showLeaveCommunityModal)
+{
+    <div class="modal-backdrop" @onmousedown="CloseLeaveCommunityModal">
+        <div class="com-modal" @onmousedown:stopPropagation="true">
+            <p>Are you sure you want to leave <b>@communityForMenu.Name</b>?</p>
+            <div class="modal-btns">
+                <span class="modal-can-btn" @onclick="CloseLeaveCommunityModal">Cancel</span>
+                <span class="modal-del-btn" @onclick="LeaveCommunity">Leave</span>
+            </div>
+        </div>
+    </div>
+}
+
+
+@code {
+
+    private Guid ActiveCommunityId;
+
+    ClaimsPrincipal? cp;
+    ApplicationUser? user;
+    private string? userId;
+    private Membership? currMembership;
+    private string newComName = "";
+
+    private bool showEditCommunityModal;
+    private bool showDeleteCommunityModal;
+    private bool showLeaveCommunityModal;
+
+    private bool showCommunityMenu;
+    private double communityMenuX;
+    private double communityMenuY;
+    private Community communityForMenu = new();
+
+    private bool showModalOverview;
+    private bool showModalMemberReport;
+    private string comModalHeader = "Overview";
+    private List<MemberReportItem> memberReportItems = new();
+    private string reportGeneratedAt = "";
+
+    protected override async Task OnParametersSetAsync()
+    {
+        using var db = await DbFactory.CreateDbContextAsync();
+
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        cp = authState.User;
+
+        if (cp.Identity?.IsAuthenticated == true)
+        {
+            userId = cp.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        }
+
+        user = await db.Users.FirstOrDefaultAsync(u => u.Id == userId);
+    }
+
+    private async Task UpdateMemberRole(string userId, Guid communityId, string newRole)
+    {
+        bool updated = await ComListService.UpdateMemberRoleAsync(userId, communityId, newRole);
+        if (updated)
+        {
+            memberReportItems = await MemRepService.GetMemberReport(communityId);
+        }
+    }
+
+    private void ShowModalOverview()
+    {
+        showModalOverview = true;
+        showModalMemberReport = false;
+        comModalHeader = "Overview";
+        memberReportItems.Clear();
+    }
+
+    private async Task ShowModalMemberReport(Guid communityId)
+    {
+        showModalMemberReport = true;
+        showModalOverview = false;
+        comModalHeader = "Member Report";
+        reportGeneratedAt = DateTime.UtcNow.ToString("g");
+        memberReportItems = await MemRepService.GetMemberReport(communityId);
+    }
+
+    private async Task OpenCommunityMenu(MouseEventArgs e, Community community)
+    {
+        communityForMenu = community;
+        communityMenuX = e.ClientX;
+        communityMenuY = e.ClientY;
+
+        using var db = DbFactory.CreateDbContext();
+        currMembership = await db.Memberships.FirstOrDefaultAsync(m =>
+            m.UserId == userId &&
+            m.CommunityId == community.Id);
+
+        showCommunityMenu = true;
+    }
+
+    private async Task CreateCommunity()
+    {
+        try
+        {
+            if (user is null)
+            {
+                await ErrorService.ShowErrorAsync("User not laoded.");
+                return;
+            }
+
+            Guid[] newCommunityIds = await ComListService.CreateCommunityAsync(user);
+            //await CommunityState.LoadUserCommunitiesAsync(AuthStateProvider);
+            //Nav.NavigateTo($"/channels/{newCommunityIds[0]}/{newCommunityIds[1]}", forceLoad: true);
+            await JS.InvokeVoidAsync("open", $"/channels/{newCommunityIds[0]}/{newCommunityIds[1]}", "_self");
+        }
+        catch (Exception e)
+        {
+            await ErrorService.ShowErrorAsync("Error creating community.");
+            Console.WriteLine($"Error creating community: {e.Message}");
+            return;
+        }
+    }
+
+    private async Task HandleEditKeys(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter")
+        {
+            await SaveCommunityEdits();
+        }
+        else if (e.Key == "Escape")
+        {
+            CloseEditCommunityModal();
+        }
+    }
+
+    private async Task SaveCommunityEdits()
+    {
+        try
+        {
+            await ComListService.SaveCommunityEditsAsync(communityForMenu, newComName);
+            CommunityState.UpdateCommunityName(communityForMenu.Id, newComName);
+            await CommunityState.LoadUserCommunitiesAsync(AuthStateProvider);
+            newComName = "";
+        }
+        catch (Exception ex)
+        {
+            await ErrorService.ShowErrorAsync("Error saving community edits.");
+            Console.WriteLine($"Error saving community edits: {ex.Message}");
+            return;
+        }
+        CloseEditCommunityModal();
+    }
+
+    private async Task DeleteCommunity()
+    {
+        try
+        {
+            string? navTo = await ComListService.DeleteCommunityAsync(communityForMenu, ActiveCommunityId);
+            await CommunityState.LoadUserCommunitiesAsync(AuthStateProvider);
+            if (navTo != null)
+            {
+                Nav.NavigateTo(navTo);
+            }
+        }
+        catch (Exception e)
+        {
+            await ErrorService.ShowErrorAsync("Error deleting community.");
+            Console.WriteLine($"Error deleting community: {e.Message}");
+            return;
+        }
+        CloseDeleteCommunityModal();
+    }
+
+    private async Task LeaveCommunity()
+    {
+        try
+        {
+            string? navTo = await ComListService.LeaveCommunityAsync(communityForMenu, ActiveCommunityId, userId);
+            await CommunityState.LoadUserCommunitiesAsync(AuthStateProvider);
+            if (navTo != null)
+            {
+                Nav.NavigateTo(navTo);
+            }
+        }
+        catch (Exception e)
+        {
+            await ErrorService.ShowErrorAsync("Error leaving community.");
+            Console.WriteLine($"Error leaving community: {e.Message}");
+            return;
+        }
+        CloseLeaveCommunityModal();
+    }
+
+    private void CloseLeaveCommunityModal()
+    {
+        showLeaveCommunityModal = false;
+    }
+
+    private void OpenLeaveCommunityModal()
+    {
+        CloseDeleteCommunityModal();
+        CloseEditCommunityModal();
+        CloseCommunityMenu();
+        showLeaveCommunityModal = true;
+    }
+
+    private void CloseCommunityMenu()
+    {
+        showCommunityMenu = false;
+    }
+
+    private void CloseEditCommunityModal()
+    {
+        showEditCommunityModal = false;
+        memberReportItems.Clear();
+        newComName = "";
+    }
+
+    private void CloseDeleteCommunityModal()
+    {
+        showDeleteCommunityModal = false;
+    }
+
+    private void OpenEditCommunityModal()
+    {
+        newComName = communityForMenu.Name;
+        CloseDeleteCommunityModal();
+        CloseCommunityMenu();
+        showEditCommunityModal = true;
+        ShowModalOverview();
+    }
+
+    private void OpenDeleteCommunityModal()
+    {
+        CloseCommunityMenu();
+        CloseEditCommunityModal();
+        showDeleteCommunityModal = true;
+    }
+
+    protected override void OnInitialized()
+    {
+        string relativePath = Nav.ToBaseRelativePath(Nav.Uri);
+        ActiveCommunityId = ComListService.SetActiveCommunityFromUrl(relativePath);
+        Nav.LocationChanged += OnLocationChanged;
+    }
+
+    private void OnLocationChanged(object? sender, Microsoft.AspNetCore.Components.Routing.LocationChangedEventArgs e)
+    {
+        string relativePath = Nav.ToBaseRelativePath(Nav.Uri);
+        ActiveCommunityId = ComListService.SetActiveCommunityFromUrl(relativePath);
+        InvokeAsync(StateHasChanged);
+        CloseCommunityMenu();
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        CommunityState.OnChange += HandleChange;
+        if (!CommunityState.UserCommunities.Any())
+        {
+            await CommunityState.LoadUserCommunitiesAsync(AuthStateProvider);
+        }
+    }
+
+    public void Dispose()
+    {
+        CommunityState.OnChange -= HandleChange;
+        Nav.LocationChanged -= OnLocationChanged;
+    }
+
+    private void HandleChange()
+    {
+        InvokeAsync(StateHasChanged);
+    }
+
+}

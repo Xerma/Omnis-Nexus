@@ -1,0 +1,77 @@
+﻿
+.search-content {
+    width: 100%;
+}
+
+.search-content h5 {
+    color: white;
+    text-align: center;
+    margin: 5px 15px 15px 15px;
+}
+
+.search-header {
+    color: white;
+    font-size: 15px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: block;
+    white-space: nowrap;
+}
+
+.message {
+    background-color: rgb(10, 10, 10);
+    border: solid 1px rgb(65, 65, 65);
+    border-radius: 5px;
+    margin-bottom: 15px;
+    padding: 10px;
+    height: auto;
+    display: grid;
+    grid-template-columns: 48px minmax(0, 1fr);
+    grid-template-rows: auto auto;
+    column-gap: 5px;
+}
+
+.message-header {
+    grid-column: 2;
+    grid-row: 1;
+    min-width: 0;
+}
+
+    .message-header span {
+        color: white;
+    }
+
+.message-author-icon {
+    grid-row: 1 / span 2;
+    width: 40px;
+    height: 40px;
+    border-radius: 100px;
+    background-color: grey;
+}
+
+.message-author-name {
+    font-weight: 600;
+}
+
+.message-timestamp {
+    font-size: 0.75rem;
+    opacity: 0.4;
+    margin-left: 8px;
+}
+
+.message-edited {
+    opacity: 0.4;
+    font-size: 0.65rem;
+    display: inline-block;
+}
+
+.message-content {
+    grid-column: 2;
+    grid-row: 2;
+    min-width: 0;
+    width: 100%;
+    overflow-wrap: break-word;
+    color: rgb(206, 206, 206);
+    white-space: pre-wrap;
+}
+

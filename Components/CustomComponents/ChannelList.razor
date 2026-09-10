@@ -1,0 +1,291 @@
+﻿@inject IDbContextFactory<ApplicationDbContext> DbFactory
+@inject NavigationManager Nav
+@inject IPermissionService PermService
+@inject AuthenticationStateProvider AuthStateProvider
+@inject ChannelListService ChannelService
+@inject ChannelStateService ChannelState
+@inject ErrorService ErrorService
+
+@if (ChannelState.Channels.Any())
+{
+    <div class="channel-list-container">
+        @foreach (var channel in ChannelState.Channels)
+        {
+            <a href="@($"/channels/{CommunityId}/{channel.Id}")" class="channel-list-item @(channel.Id == ActiveChannelId ? "active" : "")"
+            @oncontextmenu:preventDefault="true" @oncontextmenu="(e) => OpenChannelMenu(e, channel)">
+                @channel.Name
+            </a>
+        }
+
+        @if (PermService.CanManageChannels(currMembership))
+        {
+            <div class="channel-list-item" @onclick="OpenNewChannelModal">Create Channel</div>
+        }
+    </div>
+}
+
+@if (showChannelMenu && channelForMenu != null && PermService.CanManageChannels(currMembership))
+{
+    <div class="menu-backdrop" @onclick="CloseChannelMenu" @oncontextmenu="CloseChannelMenu" @oncontextmenu:preventDefault="true">
+        <div class="channel-context-menu" style="@($"top: {channelMenuY}px; left: {channelMenuX}px;")">
+            <div class="menu-edit-btn" @onclick="OpenEditChannelModal">Edit</div>
+            <div class="menu-del-btn" @onclick="OpenDeleteChannelModal">Delete</div>
+        </div>
+    </div>
+}
+
+@if (showEditChannelModal)
+{
+    <div class="modal-backdrop" @onmousedown="CloseEditChannelModal">
+        <div class="channel-modal" @onmousedown:stopPropagation="true">
+            <h5>Edit Channel</h5>
+            <p>Channel name</p>
+            <input type="text" class="channel-name-input" @bind:event="oninput" @bind="@newChannelName" @onkeydown="HandleEditChannelKeys"/>
+            <div class="modal-btns">
+                <span class="modal-can-btn" @onclick="CloseEditChannelModal">Cancel</span>
+                <span class="modal-save-btn" @onclick="SaveChannelEdits">Save</span>
+                <span class="modal-del-btn" @onclick="OpenDeleteChannelModal">Delete</span>
+            </div>
+        </div>
+    </div>
+}
+
+@if (showDeleteChannelModal)
+{
+    <div class="modal-backdrop" @onmousedown="CloseDeleteChannelModal">
+        <div class="channel-modal" @onmousedown:stopPropagation="true">
+            <p>Are you sure you want to delete <b>@channelForMenu.Name</b>?</p>
+            <div class="modal-btns">
+                <span class="modal-can-btn" @onclick="CloseDeleteChannelModal">Cancel</span>
+                <span class="modal-del-btn" @onclick="() => DeleteChannel()">Delete</span>
+            </div>
+        </div>
+    </div>
+}
+
+@if (showNewChannelModal)
+{
+    <div class="modal-backdrop" @onmousedown="CloseNewChannelModal">
+        <div class="channel-modal" @onmousedown:stopPropagation="true">
+            <h5>Create Channel</h5>
+            <p>Channel name</p>
+            <input type="text" class="channel-name-input" @bind:event="oninput" @bind="@createChannelName" @onkeydown="HandleNewChannelKeys"/>
+            <div class="modal-btns">
+                <span class="modal-can-btn" @onclick="CloseNewChannelModal">Cancel</span>
+                <span class="modal-new-btn" @onclick="CreateChannel">Create</span>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+
+    [Parameter]
+    public Guid CommunityId { get; set; }
+
+    private Guid ActiveChannelId;
+    private Membership? currMembership;
+
+    ClaimsPrincipal? cp;
+    private string? userId;
+
+    private bool showEditChannelModal;
+    private bool showDeleteChannelModal;
+    private bool showNewChannelModal;
+
+    private bool showChannelMenu;
+    private double channelMenuX;
+    private double channelMenuY;
+    private Channel? channelForMenu;
+
+    private string newChannelName = "";
+    private string createChannelName = "";
+
+    protected override async Task OnParametersSetAsync()
+    {
+        using var db = await DbFactory.CreateDbContextAsync();
+
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        cp = authState.User;
+
+        if (cp.Identity?.IsAuthenticated == true)
+        {
+            userId = cp.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        }
+
+        await ChannelState.LoadChannelsAsync(AuthStateProvider, CommunityId);
+
+        currMembership = await db.Memberships.FirstOrDefaultAsync(m =>
+            m.UserId == userId &&
+            m.CommunityId == CommunityId);
+    }
+
+    private async Task CreateChannel()
+    {
+        try
+        {
+            var channelId = await ChannelService.CreateChannelAsync(createChannelName, CommunityId);
+            await ChannelState.LoadChannelsAsync(AuthStateProvider, CommunityId);
+            Nav.NavigateTo($"/channels/{CommunityId}/{channelId}");
+            createChannelName = "";
+        }
+        catch (Exception e)
+        {
+            await ErrorService.ShowErrorAsync("Error creating new channel.");
+            Console.WriteLine($"Error creating channel: {e.Message}");
+            return;
+        }
+        CloseNewChannelModal();
+    }
+
+    private async Task HandleNewChannelKeys(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter")
+        {
+            if (string.IsNullOrWhiteSpace(createChannelName)) return;
+            await CreateChannel();
+        }
+        else if (e.Key == "Escape")
+        {
+            CloseNewChannelModal();
+        }
+    }
+
+    private async Task HandleEditChannelKeys(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter")
+        {
+            await SaveChannelEdits();
+        }
+        else if (e.Key == "Escape")
+        {
+            CloseEditChannelModal();
+        }
+    }
+
+    private async Task SaveChannelEdits()
+    {
+        try
+        {
+            if (channelForMenu is not null)
+            {
+                await ChannelService.SaveChannelEditsAsync(channelForMenu, newChannelName);
+                ChannelState.UpdateChannelNameAsync(channelForMenu.Id, newChannelName);
+            }
+
+            await ChannelState.LoadChannelsAsync(AuthStateProvider, CommunityId);
+        }
+        catch (Exception e)
+        {
+            await ErrorService.ShowErrorAsync("Error saving channel.");
+            Console.WriteLine($"Error saving channel edits: {e.Message}");
+            return;
+        }
+        CloseEditChannelModal();
+    }
+
+    private async Task DeleteChannel()
+    {
+        int channelCount = await ChannelService.GetChannelCount(CommunityId);
+        if (channelCount == 1)
+        {
+            CloseDeleteChannelModal();
+            _ = ErrorService.ShowErrorAsync("Cannot delete the last channel.");
+            return;
+        }
+
+        try
+        {
+            Guid? navTo = await ChannelService.DeleteChannelAsync(channelForMenu, ActiveChannelId, CommunityId);
+            await ChannelState.LoadChannelsAsync(AuthStateProvider, CommunityId);
+            if (navTo != Guid.Empty)
+            {
+                Nav.NavigateTo($"/channels/{navTo}");
+            }
+        }
+        catch (Exception e)
+        {
+            await ErrorService.ShowErrorAsync("Error deleting channel.");
+            Console.WriteLine($"Error deleting channel: {e.Message}");
+            return;
+        }
+        CloseDeleteChannelModal();
+    }
+
+    private void OpenChannelMenu(MouseEventArgs e, Channel channel)
+    {
+        channelForMenu = channel;
+        channelMenuX = e.ClientX;
+        channelMenuY = e.ClientY;
+        showChannelMenu = true;
+    }
+
+    private void CloseChannelMenu()
+    {
+        showChannelMenu = false;
+    }
+
+    private void CloseEditChannelModal()
+    {
+        showEditChannelModal = false;
+        newChannelName = "";
+    }
+
+    private void CloseDeleteChannelModal()
+    {
+        showDeleteChannelModal = false;
+    }
+
+    private void OpenNewChannelModal()
+    {
+        showNewChannelModal = true;
+    }
+
+    private void CloseNewChannelModal()
+    {
+        showNewChannelModal = false;
+        createChannelName = "";
+    }
+
+    private void OpenEditChannelModal()
+    {
+        newChannelName = channelForMenu.Name;
+        CloseDeleteChannelModal();
+        CloseChannelMenu();
+        showEditChannelModal = true;
+    }
+
+    private void OpenDeleteChannelModal()
+    {
+        CloseChannelMenu();
+        CloseEditChannelModal();
+        showDeleteChannelModal = true;
+    }
+
+    protected override void OnInitialized()
+    {
+        string relativePath = Nav.ToBaseRelativePath(Nav.Uri);
+        ActiveChannelId = ChannelService.SetActiveChannelFromUrl(relativePath);
+        Nav.LocationChanged += OnLocationChanged;
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        ChannelState.OnChange += StateHasChanged;
+    }
+
+    private void OnLocationChanged(object? sender, Microsoft.AspNetCore.Components.Routing.LocationChangedEventArgs e)
+    {
+        string relativePath = Nav.ToBaseRelativePath(Nav.Uri);
+        ActiveChannelId = ChannelService.SetActiveChannelFromUrl(relativePath);
+        InvokeAsync(StateHasChanged);
+        CloseChannelMenu();
+    }
+
+    public void Dispose()
+    {
+        Nav.LocationChanged -= OnLocationChanged;
+        ChannelState.OnChange -= StateHasChanged;
+    }
+
+}

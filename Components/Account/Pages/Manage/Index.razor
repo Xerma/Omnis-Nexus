@@ -1,34 +1,38 @@
 ﻿@page "/Account/Manage"
 
-@using System.ComponentModel.DataAnnotations
-@using Microsoft.AspNetCore.Identity
-@using OmnisNexus.Data
-
 @inject UserManager<ApplicationUser> UserManager
 @inject SignInManager<ApplicationUser> SignInManager
 @inject IdentityRedirectManager RedirectManager
 
-<PageTitle>Profile</PageTitle>
+<PageTitle>Profile Settings</PageTitle>
 
-<h3>Profile</h3>
-<StatusMessage />
+<div class="am-row">
+    <div class="am-header">
+        <span>Profile Settings</span>
+    </div>
 
-<div class="row">
-    <div class="col-xl-6">
-        <EditForm Model="Input" FormName="profile" OnValidSubmit="OnValidSubmitAsync" method="post">
-            <DataAnnotationsValidator />
-            <ValidationSummary class="text-danger" role="alert" />
-            <div class="form-floating mb-3">
-                <input type="text" value="@username" id="username" class="form-control" placeholder="Choose your username." disabled />
-                <label for="username" class="form-label">Username</label>
-            </div>
-            <div class="form-floating mb-3">
-                <InputText @bind-Value="Input.PhoneNumber" id="Input.PhoneNumber" class="form-control" placeholder="Enter your phone number" />
-                <label for="Input.PhoneNumber" class="form-label">Phone number</label>
-                <ValidationMessage For="() => Input.PhoneNumber" class="text-danger" />
-            </div>
-            <button type="submit" class="w-100 btn btn-lg btn-primary">Save</button>
-        </EditForm>
+    <div class="am-content">
+        <div class="am-content-inner">
+            <EditForm Model="Input" FormName="profile" OnValidSubmit="OnValidSubmitAsync" method="post">
+                <DataAnnotationsValidator />
+                <ValidationSummary class="text-danger" role="alert" />
+                <div class="form-floating mb-3">
+                    <InputText @bind-Value="Input.Username" id="Input.Username" class="form-control" placeholder="Choose your username." />
+                    <label for="Input.Username" class="form-label">Username</label>
+                    <ValidationMessage For="() => Input.Username" class="text-danger" />
+                </div>
+                <div class="form-floating mb-3">
+                    <InputText @bind-Value="Input.PhoneNumber" id="Input.PhoneNumber" class="form-control" placeholder="Enter your phone number" />
+                    <label for="Input.PhoneNumber" class="form-label">Phone number</label>
+                    <ValidationMessage For="() => Input.PhoneNumber" class="text-danger" />
+                </div>
+                <button type="submit" class="w-100 btn btn-lg btn-primary">Save</button>
+            </EditForm>
+        </div>
+    </div>
+
+    <div class="am-status-message">
+        <StatusMessage />
     </div>
 </div>
 
@@ -58,6 +62,11 @@
         phoneNumber = await UserManager.GetPhoneNumberAsync(user);
 
         Input.PhoneNumber ??= phoneNumber;
+
+        if (string.IsNullOrWhiteSpace(Input.Username))
+        {
+            Input.Username = username!;
+        }
     }
 
     private async Task OnValidSubmitAsync()
@@ -66,6 +75,16 @@
         {
             RedirectManager.RedirectToInvalidUser(UserManager, HttpContext);
             return;
+        }
+
+        if (Input.Username != user.UserName)
+        {
+            var setUsernameResult = await UserManager.SetUserNameAsync(user, Input.Username);
+            if (!setUsernameResult.Succeeded)
+            {
+                RedirectManager.RedirectToCurrentPageWithStatus("Error: Failed to set username", HttpContext);
+                return;
+            }
         }
 
         if (Input.PhoneNumber != phoneNumber)
@@ -84,8 +103,14 @@
 
     private sealed class InputModel
     {
-        [Phone]
+        //[Phone]
         [Display(Name = "Phone number")]
         public string? PhoneNumber { get; set; }
+
+        [Required]
+        [StringLength(30, ErrorMessage = "{0} must be between {2} and {1} characters.", MinimumLength = 3)]
+        [RegularExpression(@"^[a-zA-Z0-9_]+$", ErrorMessage = "Username can only contain letters, numbers, and underscores.")]
+        [Display(Name = "Username")]
+        public string Username { get; set; } = "";
     }
 }

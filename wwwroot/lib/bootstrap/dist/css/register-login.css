@@ -1,0 +1,53 @@
+﻿
+.rl-row {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+}
+
+.rl-content {
+    width: 50%;
+    max-width: 800px;
+    align-items: center;
+    justify-content: center;
+    border: solid 1px rgb(65, 65, 65);
+    background-color: rgb(25, 25, 25);
+    padding: 15px 30px 30px 30px;
+    border-radius: 20px;
+}
+
+.rl-header {
+    display: flex;
+    color: white;
+    justify-content: center;
+}
+
+.rl-header span {
+    height: auto;
+    align-content: center;
+    font-size: 30px;
+    margin-bottom: 15px;
+}
+
+.rl-form-label {
+    color: white
+}
+
+.rl-links {
+    display: flex;
+    width: 100%;
+    justify-content: center;
+    padding-top: 15px;
+}
+
+.rl-links p {
+    width: 33.333%;
+    text-align: center;
+}
+
+.form-control {
+    
+}

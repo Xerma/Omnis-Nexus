@@ -1,0 +1,82 @@
+﻿@inject IDbContextFactory<ApplicationDbContext> DbFactory
+@inject NavigationManager Nav
+@inject AuthenticationStateProvider AuthStateProvider
+@inject CommunitySearchService SearchService
+
+
+<div class="search-content">
+    <h5>Search Results</h5>
+
+    @foreach (var item in searchItems)
+    {
+        <span class="search-header">@item.Key</span>
+        @foreach (var sList in item.Value)
+        {
+            <div class="message">
+                <div class="message-author-icon">
+                </div>
+                <div class="message-header">
+                    <span class="message-author-name">@sList.AuthorName</span>
+                    @if (sList.UpdatedAt == null)
+                    {
+                        <span class="message-timestamp">@sList.CreatedAt</span>
+                    }
+                    else
+                    {
+                        <span class="message-timestamp">@sList.UpdatedAt</span>
+                    }
+                </div>
+                <div class="message-content">
+                    @HighlightMatch(sList.MessageContent)
+                    @if (sList.UpdatedAt != null)
+                    {
+                        <span class="message-edited"> (edited)</span>
+                    }
+                </div>
+            </div>
+        }
+    }
+</div>
+
+
+@code {
+
+    [Parameter]
+    public string? searchTerm { get; set; }
+
+    [Parameter]
+    public Guid CommunityId { get; set; }
+
+    private Dictionary<string, List<SearchItem>> searchItems = new();
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (!string.IsNullOrWhiteSpace(searchTerm) && searchTerm != null)
+        {
+            searchItems = await SearchService.SearchMessages(CommunityId, searchTerm);
+        }
+        else if (string.IsNullOrWhiteSpace(searchTerm))
+        {
+            searchItems.Clear();
+        }
+    }
+
+    private MarkupString HighlightMatch(string? content)
+    {
+        if (string.IsNullOrWhiteSpace(content) || string.IsNullOrWhiteSpace(searchTerm))
+            return new MarkupString(content ?? "");
+
+        string escapedContent = System.Net.WebUtility.HtmlEncode(content);
+        string escapedSearch = Regex.Escape(searchTerm);
+
+        string highlighted = Regex.Replace(
+            escapedContent,
+            escapedSearch,
+            match => $"<span class=\"search-hit\">{match.Value}</span>",
+            RegexOptions.IgnoreCase
+        );
+
+        return new MarkupString(highlighted);
+    }
+
+}

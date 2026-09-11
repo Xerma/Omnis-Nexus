@@ -7,6 +7,7 @@
 @inject AuthenticationStateProvider AuthStateProvider
 @inject MessagingService MessageService
 @inject MessageRealtimeService MessageRealtime
+@inject UserRealtimeService UserRealtime
 @inject ErrorService ErrorService
 @inject MessageStateService MessageState
 @inject ChannelStateService ChannelState
@@ -213,10 +214,14 @@
     private bool showSearchContent = false;
     private string? searchText;
     private Guid subscribedChannelId = Guid.Empty;
+    private Guid userProfileSubscriptionCommunityId = Guid.Empty;
+    private IDisposable? userProfileSubscription;
 
 
     protected override async Task OnParametersSetAsync()
     {
+        SubscribeToUserProfileUpdates();
+
         using var db = await DbFactory.CreateDbContextAsync();
 
         var authState = await AuthStateProvider.GetAuthenticationStateAsync();
@@ -480,6 +485,24 @@
         });
     }
 
+    private void HandleUserProfileUpdated(UserProfileUpdatedDto user)
+    {
+        _ = InvokeAsync(() =>
+        {
+            MessageState.UpdateUserName(user.UserId, user.UserName);
+            StateHasChanged();
+        });
+    }
+
+    private void SubscribeToUserProfileUpdates()
+    {
+        if (userProfileSubscriptionCommunityId == CommunityId) return;
+
+        userProfileSubscription?.Dispose();
+        userProfileSubscription = UserRealtime.SubscribeToCommunity(CommunityId, HandleUserProfileUpdated);
+        userProfileSubscriptionCommunityId = CommunityId;
+    }
+
     private void HandleChannelStateChanged()
     {
         channel = ChannelState.GetChannel(CurrentChannelId);
@@ -499,6 +522,7 @@
         MessageRealtime.MessageCreated -= HandleMessageCreated;
         MessageRealtime.MessageEdited -= HandleMessageEdited;
         MessageRealtime.MessageDeleted -= HandleMessageDeleted;
+        userProfileSubscription?.Dispose();
     }
 
 }

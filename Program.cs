@@ -30,6 +30,7 @@ builder.Services.AddScoped<MessagingService>();
 builder.Services.AddScoped<MessageStateService>();
 builder.Services.AddScoped<HomeService>();
 builder.Services.AddSingleton<MessageRealtimeService>();
+builder.Services.AddSingleton<UserRealtimeService>();
 
 builder.Services.AddDataProtection().PersistKeysToFileSystem(new DirectoryInfo("/app/keys")).SetApplicationName("OmnisNexus");
 

@@ -1,6 +1,8 @@
-﻿@inject IDbContextFactory<ApplicationDbContext> DbFactory
+@inject IDbContextFactory<ApplicationDbContext> DbFactory
 @inject NavigationManager Nav
 @inject AuthenticationStateProvider AuthStateProvider
+@inject UserRealtimeService UserRealtime
+@implements IDisposable
 
 <div class="">
 
@@ -52,11 +54,13 @@
     private string? userId;
 
     ApplicationUser? user;
-
-
+    private Guid userProfileSubscriptionCommunityId = Guid.Empty;
+    private IDisposable? userProfileSubscription;
 
     protected override async Task OnParametersSetAsync()
     {
+        SubscribeToUserProfileUpdates();
+
         using var db = await DbFactory.CreateDbContextAsync();
 
         var authState = await AuthStateProvider.GetAuthenticationStateAsync();
@@ -73,6 +77,32 @@
         .Include(m => m.User)
         .Where(m => m.CommunityId == CommunityId)
         .ToListAsync();
+    }
+
+    private void HandleUserProfileUpdated(UserProfileUpdatedDto updatedUser)
+    {
+        _ = InvokeAsync(() =>
+        {
+            Membership? membership = allMemberships.FirstOrDefault(m => m.UserId == updatedUser.UserId);
+            if (membership?.User is null || membership.User.UserName == updatedUser.UserName) return;
+
+            membership.User.UserName = updatedUser.UserName;
+            StateHasChanged();
+        });
+    }
+
+    private void SubscribeToUserProfileUpdates()
+    {
+        if (userProfileSubscriptionCommunityId == CommunityId) return;
+
+        userProfileSubscription?.Dispose();
+        userProfileSubscription = UserRealtime.SubscribeToCommunity(CommunityId, HandleUserProfileUpdated);
+        userProfileSubscriptionCommunityId = CommunityId;
+    }
+
+    public void Dispose()
+    {
+        userProfileSubscription?.Dispose();
     }
 
 }

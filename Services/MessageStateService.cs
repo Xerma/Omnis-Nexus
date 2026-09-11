@@ -52,6 +52,24 @@ namespace OmnisNexus.Services
             }
         }
 
+        public void UpdateUserName(string userId, string userName)
+        {
+            bool updated = false;
+
+            foreach (MessageDto message in Messages.Where(m => m.UserId == userId))
+            {
+                if (message.UserName == userName) continue;
+
+                message.UserName = userName;
+                updated = true;
+            }
+
+            if (updated)
+            {
+                NotifyStateChanged();
+            }
+        }
+
         public void NotifyStateChanged() => OnChange?.Invoke();
 
         public async Task LoadMessagesAsync(Guid currChannelId)

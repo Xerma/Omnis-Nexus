@@ -3,6 +3,8 @@
 @inject UserManager<ApplicationUser> UserManager
 @inject SignInManager<ApplicationUser> SignInManager
 @inject IdentityRedirectManager RedirectManager
+@inject UserRealtimeService UserRealtime
+@inject IDbContextFactory<ApplicationDbContext> DbFactory
 
 <PageTitle>Profile Settings</PageTitle>
 
@@ -77,6 +79,8 @@
             return;
         }
 
+        bool usernameChanged = false;
+
         if (Input.Username != user.UserName)
         {
             var setUsernameResult = await UserManager.SetUserNameAsync(user, Input.Username);
@@ -85,6 +89,8 @@
                 RedirectManager.RedirectToCurrentPageWithStatus("Error: Failed to set username", HttpContext);
                 return;
             }
+
+            usernameChanged = true;
         }
 
         if (Input.PhoneNumber != phoneNumber)
@@ -98,6 +104,25 @@
         }
 
         await SignInManager.RefreshSignInAsync(user);
+
+        if (usernameChanged)
+        {
+            var userId = await UserManager.GetUserIdAsync(user);
+            var userName = await UserManager.GetUserNameAsync(user);
+            await using var db = await DbFactory.CreateDbContextAsync();
+            var communityIds = await db.Memberships
+                .Where(m => m.UserId == userId)
+                .Select(m => m.CommunityId)
+                .ToListAsync();
+
+            UserRealtime.NotifyUserProfileUpdated(new UserProfileUpdatedDto
+            {
+                UserId = userId,
+                UserName = userName ?? userId,
+                UpdatedAt = DateTime.UtcNow
+            }, communityIds);
+        }
+
         RedirectManager.RedirectToCurrentPageWithStatus("Your profile has been updated", HttpContext);
     }
 
